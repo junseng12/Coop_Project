@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<title>직접 재실행 안내</title>
+<style>
+    body {
+        font: 17px/1.7 sans-serif;
+        max-width: 1000px;
+        margin: 40px auto;
+        padding: 20px
+    }
+
+    pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #f1f5f9;
+        padding: 16px
+    }
+</style>
+<h1>직접 재실행 안내</h1>
+<p>Windows Terminal의 Ubuntu 또는 VS Code WSL 터미널에서 아래 명령을 실행하세요. <b>현재 대화 프로젝트 폴더가 아니라 실험 코드가 있는 작업 폴더로 먼저 이동해야 합니다.</b>
+    VS Code를 관리자 권한으로 켜는 것은 필요하지 않습니다.</p>
+<h2>1. 작업 폴더 이동</h2>
+<pre>cd /mnt/c/Users/pet_who/.codex/.chatgpt-projects/g-p-6ab130675a0c81919d6c1ea30ba26977/work/coop-sil-billing-starter/coop-sil-billing</pre>
+<h2>2. 직접 재검증 시작</h2>
+<pre>bash scripts/detached.sh bash scripts/review_local.sh</pre>
+<h2>3. 실행 상태와 로그 보기</h2>
+<pre>LATEST_JOB=&quot;$(ls -1dt diagnostics/jobs/coop-job-* | head -1)&quot;
+cat &quot;$LATEST_JOB/status.txt&quot;
+tail -f &quot;$LATEST_JOB/output.log&quot;</pre>
+<h2>4. 결과 파일 찾기</h2>
+<pre>LATEST_REVIEW=&quot;$(ls -1dt diagnostics/local-review-* | head -1)&quot;
+echo &quot;$LATEST_REVIEW/result.html&quot;
+python3 -m json.tool &quot;$LATEST_REVIEW/review-summary.json&quot;</pre>
+<h2>5. 서비스 상태 확인</h2>
+<pre>bash scripts/stack.sh ps
+bash scripts/everest_citrine.sh ps</pre>
+<p>tail -f 화면에서 Ctrl+C는 로그 보기만 종료합니다. 실행 중인 실험은 계속됩니다. RUNNING은 진행 중, EXIT_CODE=0은 완료, 그 외 값은 실패입니다.</p>
+<h2>자동 수행 범위</h2>
+<p>호스트 메모리 확인 → 기존 백엔드 기동 → 로컬 EVerest Compose 기동 → 새 PnC 모의 충전 약 45초 → 종료 → 새 거래와 CDR·청구서 연결 확인 → 인증 응답·세션 로그·계량·청구 계산
+    대조 → result.html 저장 순서입니다. 실행 로그는 단계별로 남습니다.</p>
+<h2>결과를 읽는 방법</h2>
+<p>result.html의 통과는 별도 PnC 증거 검사와 delivery gate가 모두 통과한 경우입니다. 이번 거래 ID·충전량·모의 청구액 및 각 확인 항목이 함께 표시됩니다. delivery.json
+    자체의 PnC false는 API 상관관계 검사 범위를 뜻하며, review-summary.json에서 별도 PnC 증거를 확인합니다. 실제 결제나 물리 계량 검증을 뜻하지 않습니다.</p>
+<h2>구성과 보존</h2>
+<p>deploy/everest.local.yml과 scripts/everest_citrine.sh는 /home/hyebin을 참조하지 않습니다. 이 PC의 기존 manager 컨테이너에서 만든 로컬 runtime
+    이미지 ev-pnc/manager:coop-local-20261116를 사용합니다. 새 PC에 소스부터 설치하는 구성은 아닙니다. 기존 DB·청구서·원본 컨테이너는 보존하며 seed·PKI 재생성을 반복하지
+    않습니다. 로컬 runtime 이미지에는 실험용 개인키가 있으므로 외부에 올리지 마세요.</p>
+<h2>남아 있는 제한</h2>
+<p>SECC 인증서 OCSP 상태 갱신 GenericError 경고는 별도 남아 있습니다. 계약 인증서의 CSMS Accepted와 실제 세션 성공 여부를 직접 검사하지만 인증서 상태 관리 전체가 정상이라는 뜻은
+    아닙니다. mock eMSP는 재시작 시 과거 메모리 수신 이력을 잃으며, DB·청구서는 유지됩니다. systemd 작업은 VS Code 창 종료를 견디지만 WSL 종료나 Windows 재부팅은 견디지
+    못합니다.</p>
+
+</html>

@@ -1,0 +1,40 @@
+name: publish-clean-everest
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build-and-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Build the isolated clean runtime
+        run: docker build --platform linux/amd64 --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t coop-everest:ci deploy/everest-runtime
+      - name: Audit all image layers before publishing
+        run: python3 scripts/audit_runtime_image.py coop-everest:ci --out image-audit.json
+      - name: Check runtime imports
+        run: docker run --rm coop-everest:ci python3 -c 'import yaml, cryptography, netifaces, caio, py4j; print("runtime imports passed")'
+      - name: Publish to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/coop-everest-runtime"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag coop-everest:ci "$image:sha-$GITHUB_SHA"
+          docker push "$image:sha-$GITHUB_SHA"
+          docker buildx imagetools inspect "$image:sha-$GITHUB_SHA" > published-image.txt
+          digest="$(awk '/^Digest:/{print $2; exit}' published-image.txt)"
+          test -n "$digest"
+          printf '{"everest_runtime":"%s@%s"}\n' "$image" "$digest" > IMAGES.lock.json
+      - name: Save digest and audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-image-lock
+          path: |
+            IMAGES.lock.json
+            image-audit.json
+            published-image.txt

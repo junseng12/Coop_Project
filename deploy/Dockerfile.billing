@@ -1,0 +1,10 @@
+# For publication, replace this runtime tag with an image digest after local validation.
+ARG PYTHON_IMAGE=python:3.13-slim
+FROM ${PYTHON_IMAGE}
+WORKDIR /app
+COPY billing /app/billing
+COPY config /app/config
+RUN useradd --uid 10001 --create-home lab && mkdir /data && chown lab:lab /data
+USER lab
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BILLING_BIND=0.0.0.0 BILLING_PORT=8088 BILLING_DB=/data/billing.sqlite3 BILLING_EVIDENCE_DIR=/data/evidence
+CMD ["python", "-m", "billing.app"]

@@ -1,0 +1,39 @@
+# This PC's validated runtime snapshot; no external EVerest workspace required.
+services:
+  mqtt-server:
+    image: ghcr.io/everest/everest-demo/mqtt-server:2025.10.0-single-phase
+    pull_policy: never
+    ports: ["127.0.0.1:12727:1883"]
+  manager:
+    image: ev-pnc/manager:coop-local-20261116
+    pull_policy: never
+    entrypoint: ["tail", "-f", "/dev/null"]
+    environment:
+      MQTT_SERVER_ADDRESS: mqtt-server
+    depends_on: [mqtt-server]
+    cpus: "${EVEREST_MANAGER_CPUS:-4}"
+    mem_limit: "${EVEREST_MANAGER_MEMORY:-6G}"
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+    networks: [default, backend]
+    volumes:
+      - ${COOP_KIT_ROOT}/config/config-sil-ocpp201-pnc-strict.yaml:/tmp/config-sil-ocpp201-pnc.yaml:ro
+      - ${COOP_KIT_ROOT}/diagnostics/everest-session:/evidence
+  nodered:
+    image: ghcr.io/everest/everest-demo/nodered:2025.10.0-single-phase
+    pull_policy: never
+    environment:
+      FLOWS: /config/config-sil-iso15118-ac-flow.json
+      MQTT_SERVER_ADDRESS: mqtt-server
+    depends_on: [mqtt-server]
+    ports: ["127.0.0.1:11880:1880"]
+networks:
+  default:
+    name: coop-everest-local-net
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:db8:9::/64
+  backend:
+    name: coop-sil-billing-net
+    external: true

@@ -1,0 +1,79 @@
+# Compose merge checked with the pinned source. Docker startup NOT executed here.
+# Relative paths are interpreted against vendor/citrineos-core; kit paths use COOP_KIT_ROOT.
+services:
+  citrine:
+    image: coop-lab/citrine:4fd7599
+    pull_policy: never
+    ports: !override
+      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:18081:8081"
+      - "127.0.0.1:18082:8082"
+    environment:
+      # Omit external test-CA integrations for first OCPP smoke test.
+      # Configure the team's own PnC lab PKI separately; this is NOT PnC proof.
+      CITRINEOS_INTEGRATIONS_V2GCA: !reset null
+      CITRINEOS_INTEGRATIONS_CHARGINGSTATIONCA: !reset null
+    volumes:
+      - ${COOP_KIT_ROOT}/config/websocket-servers.ocpp201.json:/usr/local/apps/citrineos/apps/ocpp-server/dist/assets/websocket-servers.json:ro
+  citrine-ui:
+    profiles: !override [optional-ui]
+    env_file: !reset []
+    ports: !override ["127.0.0.1:13000:3000"]
+  citrineos-ocpi:
+    image: coop-lab/ocpi:4fd7599
+    pull_policy: never
+    ports: !override ["127.0.0.1:18085:8085"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('net').connect(8085,'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));s.setTimeout(3000,()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+  mock-msp:
+    image: coop-lab/mock-msp:4fd7599
+    pull_policy: never
+    environment:
+      MOCK_MSP_PUBLIC_BASE_URL: 'http://mock-msp:8083/ocpi'
+      MOCK_MSP_CONTROL_SECRET: ${MOCK_MSP_CONTROL_SECRET:?Run scripts/init_env.py}
+      CITRINE_HASURA_URL: 'http://graphql-engine:8080/v1/graphql'
+    ports: !override ["127.0.0.1:18083:8083"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8083/_mock/health',{headers:{'x-mock-control-secret':process.env.MOCK_MSP_CONTROL_SECRET}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+  amqp-broker:
+    ports: !reset []
+    volumes: !override ["coop-mq:/var/lib/rabbitmq"]
+  ocpp-db:
+    ports: !reset []
+    volumes: !override ["coop-db:/var/lib/postgresql/data"]
+  graphql-engine:
+    ports: !override ["127.0.0.1:18090:8080"]
+  billing:
+    image: coop-lab/billing:0.1
+    build:
+      context: ${COOP_KIT_ROOT:?Use scripts/stack.sh}
+      dockerfile: deploy/Dockerfile.billing
+    environment:
+      BILLING_API_TOKEN: ${BILLING_API_TOKEN:?Run scripts/init_env.py}
+      MOCK_MSP_CONTROL_SECRET: ${MOCK_MSP_CONTROL_SECRET:?Run scripts/init_env.py}
+      MOCK_MSP_BASE_URL: http://mock-msp:8083
+    ports: ["127.0.0.1:18088:8088"]
+    volumes: ["coop-billing:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      mock-msp:
+        condition: service_healthy
+networks:
+  default:
+    name: coop-sil-billing-net
+volumes:
+  coop-db:
+  coop-mq:
+  coop-billing:

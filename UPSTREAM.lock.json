@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-14",
+  "status": "SOURCE_INSPECTED_CANDIDATE_NOT_END_TO_END_VALIDATED",
+  "citrineos_core": {
+    "url": "https://github.com/citrineos/citrineos-core.git",
+    "commit": "4fd7599b91c2fb6e6065e7c9b94be69880cced27",
+    "commit_message": "Merge pull request #1225 from citrineos/next; v2.1.0",
+    "commit_date": "2026-10-21T14:59:08Z",
+    "includes": ["apps/ocpp-server", "apps/ocpi-server", "apps/mock-msp"],
+    "node_requirement_observed": ">=24.16.0",
+    "pnpm_observed": "10.19.0"
+  },
+  "protocol_targets": {"ocpp": "2.0.1", "ocpi": "2.2.1", "pnc": "ISO 15118-2, separately verify contract-certificate authentication"},
+  "existing_everest": {"status": "UNINSPECTED_KEEP_UNCHANGED", "commit": null, "image_digest": null},
+  "citrineos_payment": {"status": "NOT_DEPLOYED_NOT_ASSUMED_TO_BE_EMSP", "reason": "Separate Stripe/Directus integration; current-Core compatibility and PnC retail path unverified"},
+  "container_images": {"status": "NOT_DIGEST_LOCKED", "publication_gate": "Record locally validated image digests; this file pins source, not every downloaded binary"}
+}

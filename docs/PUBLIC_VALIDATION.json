@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-11-16",
+  "scope": "new clean image, new runtime volume and PKI; existing CitrineOS/backend database",
+  "runtime_build": "pinned official EVerest binaries + clean Debian runtime; not full C++ compilation",
+  "e2e_passed": true,
+  "checks": {
+    "runtime_strict_certificate_chain": true,
+    "session_payment_details": true,
+    "session_authorization": true,
+    "session_finished": true,
+    "csms_token_and_certificate_accepted": true,
+    "transaction_completed_with_energy": true,
+    "started_updated_ended": true,
+    "db_cdr_invoice_energy_equal": true,
+    "retail_calculation_correct": true,
+    "no_payment": true
+  },
+  "energy_kwh": "0.105",
+  "amount_decimal": "0.03",
+  "currency": "USD",
+  "transaction_id": "8d071658-310a-4eef-b5b4-ed82e62099d8",
+  "restart_healthy": true,
+  "pki_preserved_across_restart": true,
+  "persistent_state_mount": "coop-everest-clean_everest-state -> /state",
+  "fresh_full_backend_install_verified": false,
+  "ghcr_public_download_verified": false
+}

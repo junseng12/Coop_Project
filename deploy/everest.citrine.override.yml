@@ -1,0 +1,29 @@
+services:
+  mqtt-server:
+    ports: !override
+      - "127.0.0.1:12727:1883"
+    networks: [default]
+  manager:
+    image: ev-pnc/manager:2025.10.0-recovered
+    pull_policy: never
+    networks:
+      - default
+      - backend
+    volumes:
+      - ${COOP_KIT_ROOT}/config/config-sil-ocpp201-pnc-strict.yaml:/tmp/config-sil-ocpp201-pnc.yaml:ro
+      - ${COOP_KIT_ROOT}/diagnostics/everest-session:/evidence
+  nodered:
+    ports: !override
+      - "127.0.0.1:11880:1880"
+    networks: [default]
+
+networks:
+  default:
+    name: coop-everest-citrine-net
+    ipam:
+      config: !override
+        - subnet: 2001:db8:8::/64
+          gateway: 2001:db8:8::1
+  backend:
+    name: coop-sil-billing-net
+    external: true

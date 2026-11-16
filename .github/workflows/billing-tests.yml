@@ -1,0 +1,16 @@
+name: billing-component-tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  python-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit and loopback HTTP tests (no external services)
+        run: python3 -m unittest discover -s tests -v
+      - name: Explicitly synthetic billing smoke test
+        run: python3 -m billing.demo
+# This workflow does NOT assert Docker/EVerest/CitrineOS/PnC integration.

@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!sanitize.py
+!initialize.py
+!entrypoint.sh
+!requirements.txt

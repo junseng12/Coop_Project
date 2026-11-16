@@ -1,0 +1,19 @@
+name: coop-billing-component
+services:
+  billing:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.billing
+    environment:
+      BILLING_API_TOKEN: ${BILLING_API_TOKEN:?Run python3 scripts/init_env.py first}
+    ports:
+      - "127.0.0.1:18088:8088"
+    volumes:
+      - billing-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+volumes:
+  billing-data:

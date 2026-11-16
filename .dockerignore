@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+diagnostics
+evidence
+backups
+vendor
+**/__pycache__
+*.zip
+*.key
+*.pem
+*.p12
+*.pfx

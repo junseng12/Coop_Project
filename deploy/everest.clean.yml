@@ -1,0 +1,47 @@
+# Public runtime. Persistent keys/state are created in a dedicated Docker volume.
+services:
+  mqtt-server:
+    image: ghcr.io/everest/everest-demo/mqtt-server@sha256:1aa72f12ef8556c38d630723c524036fa2f2f8e8115ea2abf4769b3eb7600096
+    ports: ["127.0.0.1:14227:1883"]
+  manager:
+    image: ${EVEREST_RUNTIME_IMAGE:?Use scripts/clean_everest.sh}
+    environment:
+      MQTT_SERVER_ADDRESS: mqtt-server
+      CSMS_URL: ws://citrine:8081/cp001
+    depends_on: [mqtt-server]
+    cpus: "2"
+    mem_limit: 3G
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+    networks: [default, backend]
+    volumes:
+      - everest-state:/state
+      - ${COOP_KIT_ROOT}/config/config-sil-ocpp201-pnc-strict.yaml:/config/everest.yaml:ro
+      - ${COOP_KIT_ROOT}/diagnostics/clean-everest:/evidence
+    tmpfs:
+      - /tmp:exec,size=256m
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x manager >/dev/null && pgrep -x openssl >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 90s
+  nodered:
+    image: ghcr.io/everest/everest-demo/nodered@sha256:fb50435befad90896744630bb6e4c00e5348b2c4599fe3564673d88b97a963d1
+    environment:
+      FLOWS: /config/config-sil-iso15118-ac-flow.json
+      MQTT_SERVER_ADDRESS: mqtt-server
+    depends_on: [mqtt-server]
+    ports: ["127.0.0.1:14880:1880"]
+networks:
+  default:
+    name: coop-everest-clean-net
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: ${COOP_IPV6_SUBNET:-fd42:4556:2026:1::/64}
+  backend:
+    name: coop-sil-billing-net
+    external: true
+volumes:
+  everest-state:

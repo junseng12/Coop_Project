@@ -1,0 +1,17 @@
+{
+  "policy_version": "lab-flat-v1",
+  "notice": "Synthetic laboratory tariffs, not real prices or currency conversion. Add the observed PnC identity explicitly; RFID demo is not PnC evidence.",
+  "accounts": [{
+    "account_id": "LAB-DRIVER-001",
+    "identities": [
+      {"country_code": "US", "party_id": "TST", "uid": "NL123C10028948M", "type": "OTHER", "contract_id": "NL123C10028948M"},
+      {"country_code": "US", "party_id": "TST", "uid": "DEADBEEF", "type": "RFID", "contract_id": "MOCKCONTRACT-001"},
+      {"country_code": "US", "party_id": "TST", "uid": "DEADBEEF", "type": "RFID", "contract_id": "USTSTC012345678"}
+    ],
+    "tariffs_by_currency": {
+      "KRW": {"tariff_id": "LAB-KRW-300", "rate_per_kwh": "300"},
+      "USD": {"tariff_id": "LAB-USD-030", "rate_per_kwh": "0.30"},
+      "EUR": {"tariff_id": "LAB-EUR-030", "rate_per_kwh": "0.30"}
+    }
+  }]
+}

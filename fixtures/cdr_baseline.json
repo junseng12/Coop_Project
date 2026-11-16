@@ -1,0 +1,52 @@
+{
+  "country_code": "US",
+  "party_id": "S44",
+  "id": "LAB-CDR-001",
+  "session_id": "LAB-SESSION-001",
+  "start_date_time": "2026-11-14T00:00:00Z",
+  "end_date_time": "2026-11-14T01:00:00Z",
+  "cdr_token": {
+    "country_code": "US",
+    "party_id": "TST",
+    "uid": "DEADBEEF",
+    "type": "RFID",
+    "contract_id": "MOCKCONTRACT-001"
+  },
+  "auth_method": "AUTH_REQUEST",
+  "cdr_location": {
+    "id": "1",
+    "name": "Synthetic lab fixture",
+    "address": "Lab",
+    "city": "Test",
+    "postal_code": "00000",
+    "country": "USA",
+    "coordinates": {
+      "latitude": "37.00000",
+      "longitude": "127.00000"
+    },
+    "evse_uid": "cp001::1",
+    "evse_id": "US*S44*E000001",
+    "connector_id": "1",
+    "connector_standard": "IEC_62196_T2",
+    "connector_format": "SOCKET",
+    "connector_power_type": "AC_3_PHASE"
+  },
+  "currency": "KRW",
+  "charging_periods": [
+    {
+      "start_date_time": "2026-11-14T00:00:00Z",
+      "dimensions": [
+        {
+          "type": "ENERGY",
+          "volume": 10
+        }
+      ]
+    }
+  ],
+  "total_cost": {
+    "excl_vat": 2000
+  },
+  "total_energy": 10,
+  "total_time": 1,
+  "last_updated": "2026-11-14T01:00:01Z"
+}
