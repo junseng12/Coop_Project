@@ -23,7 +23,7 @@
   "pki_preserved_across_restart": true,
   "persistent_state_mount": "coop-everest-clean_everest-state -> /state",
   "fresh_full_backend_install_verified": false,
-  "ghcr_public_download_verified": false,
+  "ghcr_public_download_verified": true,
   "image_layer_audit": {
     "image": "coop-lab/everest-runtime:clean-20261116",
     "layers_scanned": 4,
@@ -37,7 +37,7 @@
   "github_repository": "https://github.com/junseng12/Coop_Project",
   "image_publish_workflow": "https://github.com/junseng12/Coop_Project/actions/runs/43838732712",
   "github_build_and_layer_audit_passed": true,
-  "public_package_visibility": "pending manual GitHub package setting",
+  "public_package_visibility": "public, anonymous manifest access and Docker pull verified",
   "ci_image_audit": {
     "image": "coop-everest:ci",
     "layers_scanned": 4,
@@ -45,5 +45,33 @@
     "findings": [],
     "passed": true,
     "limits": "PEM and SQLite signatures and key extensions; not a universal secret detector. No findings are not proof that arbitrary encoded secrets cannot exist."
+  },
+  "anonymous_registry_verification": {
+    "registry": "ghcr.io",
+    "repository": "junseng12/coop-everest-runtime",
+    "digest": "sha256:23c532c489ff89d678dcd96436f51ee4fea3d388db99eb70684104b981d74d94",
+    "anonymous_token_request": 200,
+    "anonymous_manifest_request": 200,
+    "manifest_media_type": "application/vnd.docker.distribution.manifest.v2+json"
+  },
+  "published_digest_e2e": {
+    "passed": true,
+    "transaction_id": "029925ba-800c-4f3e-b15d-2e0e2fe92f50",
+    "checks": {
+      "runtime_strict_certificate_chain": true,
+      "session_payment_details": true,
+      "session_authorization": true,
+      "session_finished": true,
+      "csms_token_and_certificate_accepted": true,
+      "transaction_completed_with_energy": true,
+      "started_updated_ended": true,
+      "db_cdr_invoice_energy_equal": true,
+      "retail_calculation_correct": true,
+      "no_payment": true
+    },
+    "energy_kwh": "0.10400000000000001",
+    "amount_decimal": "0.03",
+    "currency": "USD",
+    "scope": "Downloaded published digest; existing backend and locally generated clean-runtime state volume"
   }
 }

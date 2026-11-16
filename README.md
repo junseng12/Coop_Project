@@ -1,5 +1,7 @@
 # Coop_Project — EV 충전·모의 과금 SIL 실험 환경
 
+**배포 확인:** [공개 GHCR 이미지](https://github.com/junseng12/Coop_Project/pkgs/container/coop-everest-runtime) · [이미지 빌드·배포 CI](https://github.com/junseng12/Coop_Project/actions/runs/43838732712) · [고정 digest](IMAGES.lock.json). 비로그인 다운로드 및 내려받은 배포본의 PnC→CDR→모의 청구 검증을 완료했습니다. 기존 백엔드를 재사용한 검증이며, 전체 신규 설치 검증과는 구분합니다.
+
 가상 차량의 **ISO 15118-2 PnC 인증 → EVerest 충전 → OCPP 2.0.1 거래 → OCPI 2.2.1 CDR → mock eMSP → 모의 고객 청구**를 관찰하는 로컬 실험 환경입니다.
 
 실제 전력 계측·생산 PKI·Stripe/실제 결제·계량 서명 검증은 포함하지 않습니다. 청구 상태는 `SIMULATED_INVOICE_NOT_PAID`입니다.
