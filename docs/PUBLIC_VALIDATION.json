@@ -23,5 +23,27 @@
   "pki_preserved_across_restart": true,
   "persistent_state_mount": "coop-everest-clean_everest-state -> /state",
   "fresh_full_backend_install_verified": false,
-  "ghcr_public_download_verified": false
+  "ghcr_public_download_verified": false,
+  "image_layer_audit": {
+    "image": "coop-lab/everest-runtime:clean-20261116",
+    "layers_scanned": 4,
+    "files_scanned": 14153,
+    "findings": [],
+    "passed": true,
+    "limits": "PEM and SQLite signatures and key extensions; not a universal secret detector. No findings are not proof that arbitrary encoded secrets cannot exist."
+  },
+  "python_tests_passed": 47,
+  "published_image": "ghcr.io/junseng12/coop-everest-runtime@sha256:23c532c489ff89d678dcd96436f51ee4fea3d388db99eb70684104b981d74d94",
+  "github_repository": "https://github.com/junseng12/Coop_Project",
+  "image_publish_workflow": "https://github.com/junseng12/Coop_Project/actions/runs/43838732712",
+  "github_build_and_layer_audit_passed": true,
+  "public_package_visibility": "pending manual GitHub package setting",
+  "ci_image_audit": {
+    "image": "coop-everest:ci",
+    "layers_scanned": 4,
+    "files_scanned": 14153,
+    "findings": [],
+    "passed": true,
+    "limits": "PEM and SQLite signatures and key extensions; not a universal secret detector. No findings are not proof that arbitrary encoded secrets cannot exist."
+  }
 }
