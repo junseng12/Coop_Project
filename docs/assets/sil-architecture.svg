@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060" role="img" aria-labelledby="title desc"><title id="title">Virtual EV–EVerest–CitrineOS SIL 충전·모의 청구 환경</title><desc id="desc">사용자 제공 구조도를 바탕으로 공개 GHCR 배포와 clean-runtime 실행 경로를 반영한 개념도. 실제 하드웨어와 결제는 포함하지 않는다.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#637990"/></marker></defs><style>text{font-family:'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;fill:#102b49}.h{font-size:23px;font-weight:700}.t{font-size:18px}.s{font-size:16px;fill:#456685}.mono{font-family:monospace;font-size:15px}</style><rect width="1600" height="1060" fill="white"/>
+<text x="800" y="48" text-anchor="middle" class="h">Virtual EV–EVerest–CitrineOS 기반 SIL 충전·모의 청구</text>
+<text x="800" y="80" text-anchor="middle" class="t">가상 차량·충전기와 실제 서버 통신으로 인증 → 거래 → CDR → 모의 청구 연결 확인</text>
+<rect x="24" y="110" width="1552" height="530" rx="18" fill="#f8fbff" stroke="#bed8ef" stroke-width="2"/>
+<rect x="44" y="145" width="260" height="465" rx="18" fill="#edf5ff" stroke="#79b5ff" stroke-width="2"/>
+<rect x="384" y="145" width="400" height="465" rx="18" fill="#effcf7" stroke="#43cba2" stroke-width="2"/>
+<rect x="870" y="145" width="386" height="465" rx="18" fill="#f4f0ff" stroke="#a08be8" stroke-width="2"/>
+<rect x="1335" y="145" width="220" height="465" rx="18" fill="#fff6e6" stroke="#efaa43" stroke-width="2"/>
+<text x="174" y="181" text-anchor="middle" class="h">① Virtual EV / EVCC</text>
+<text x="584" y="181" text-anchor="middle" class="h">② EVerest 가상 EVSE</text>
+<text x="1063" y="181" text-anchor="middle" class="h">③ CitrineOS / CPO</text>
+<text x="1445" y="181" text-anchor="middle" class="h">④ eMSP·청구</text>
+<rect x="67" y="214" width="214" height="175" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<path d="M102 319v-24h20l16-27h45l24 27h27v24h-16m-79 0h58" fill="none" stroke="#1978d4" stroke-width="5"/><circle cx="127" cy="320" r="12" fill="white" stroke="#1978d4" stroke-width="5"/><circle cx="209" cy="320" r="12" fill="white" stroke="#1978d4" stroke-width="5"/>
+<text x="174" y="365" text-anchor="middle" class="t">ISO 15118-2 · TLS</text>
+<text x="174" y="431" text-anchor="middle" class="t">계약 인증서 제시</text>
+<text x="174" y="460" text-anchor="middle" class="t">SLAC·충전 협상</text>
+<text x="174" y="489" text-anchor="middle" class="t">소프트웨어 차량 동작</text>
+<rect x="66" y="526" width="216" height="61" rx="18" fill="white" stroke="#79b5ff" stroke-width="2"/>
+<text x="174" y="552" text-anchor="middle" class="s">계약 eMAID</text>
+<text x="174" y="578" text-anchor="middle" class="mono">NL123C10028948M</text>
+<path d="M313 335L374 335" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="343.5" y="319" text-anchor="middle" class="s">ISO 15118-2</text>
+<rect x="404" y="215" width="360" height="253" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="584" y="250" text-anchor="middle" class="h">EVerest manager</text>
+<rect x="420" y="270" width="154" height="77" rx="18" fill="#f7faff" stroke="#d4dfed" stroke-width="2"/>
+<text x="497" y="300" text-anchor="middle" class="s">EvseV2G / PyEvJosev</text>
+<text x="497" y="327" text-anchor="middle" class="s">차량↔충전기 통신</text>
+<rect x="595" y="270" width="154" height="77" rx="18" fill="#f7faff" stroke="#d4dfed" stroke-width="2"/>
+<text x="672" y="300" text-anchor="middle" class="s">Auth / EvseSecurity</text>
+<text x="672" y="327" text-anchor="middle" class="s">인증서·계약 검증</text>
+<rect x="420" y="362" width="154" height="77" rx="18" fill="#f7faff" stroke="#d4dfed" stroke-width="2"/>
+<text x="497" y="392" text-anchor="middle" class="s">Yeti / SLAC Simulator</text>
+<text x="497" y="419" text-anchor="middle" class="s">충전·계량 시뮬레이션</text>
+<rect x="595" y="362" width="154" height="77" rx="18" fill="#f7faff" stroke="#d4dfed" stroke-width="2"/>
+<text x="672" y="392" text-anchor="middle" class="s">OCPP201</text>
+<text x="672" y="419" text-anchor="middle" class="s">인증·거래·계량 보고</text>
+<rect x="404" y="486" width="360" height="102" rx="18" fill="#f6fffb" stroke="#43cba2" stroke-width="2"/>
+<text x="584" y="516" text-anchor="middle" class="t">cp001 · 계약 체인 검증 활성화</text>
+<text x="584" y="544" text-anchor="middle" class="s">CSMS ws://citrine:8081/cp001</text>
+<text x="584" y="572" text-anchor="middle" class="s">테스트 PKI·OCPP 상태 → /state 볼륨</text>
+<path d="M793 335L860 335" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="826.5" y="319" text-anchor="middle" class="s">OCPP 2.0.1</text>
+<rect x="891" y="215" width="344" height="126" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="1063" y="250" text-anchor="middle" class="h">CitrineOS OCPP Server</text>
+<text x="1063" y="284" text-anchor="middle" class="t">BootNotification · Authorize</text>
+<text x="1063" y="313" text-anchor="middle" class="t">Started → Updated → Ended</text>
+<rect x="891" y="363" width="165" height="92" rx="18" fill="#f9fbff" stroke="#d4dfed" stroke-width="2"/>
+<rect x="1070" y="363" width="165" height="92" rx="18" fill="#f9fbff" stroke="#d4dfed" stroke-width="2"/>
+<text x="973" y="395" text-anchor="middle" class="s">PostgreSQL</text>
+<text x="973" y="424" text-anchor="middle" class="s">거래·계량·인증</text>
+<text x="1152" y="395" text-anchor="middle" class="s">RabbitMQ·Hasura</text>
+<text x="1152" y="424" text-anchor="middle" class="s">메시지·조회 API</text>
+<path d="M1063 342V360M1063 456V482" stroke="#9cacbf" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="891" y="486" width="344" height="102" rx="18" fill="white" stroke="#a08be8" stroke-width="2"/>
+<text x="1063" y="519" text-anchor="middle" class="h">CitrineOS OCPI Server</text>
+<text x="1063" y="553" text-anchor="middle" class="t">종료 거래 → Session / CDR</text>
+<text x="1063" y="577" text-anchor="middle" class="s">Core 소스 commit: 4fd7599…</text>
+<path d="M1265 335L1325 335" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="1295.0" y="319" text-anchor="middle" class="s">OCPI 2.2.1</text>
+<rect x="1352" y="215" width="186" height="153" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="1445" y="252" text-anchor="middle" class="h">mock eMSP</text>
+<text x="1445" y="290" text-anchor="middle" class="s">CDR 수신·스키마 검사</text>
+<text x="1445" y="319" text-anchor="middle" class="s">wire trace·findings</text>
+<path d="M1445 373V419" stroke="#637990" stroke-width="4" marker-end="url(#arrow)"/>
+<text x="1490" y="405" text-anchor="middle" class="s">내부 API</text>
+<rect x="1352" y="431" width="186" height="157" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="1445" y="467" text-anchor="middle" class="h">Mock Billing</text>
+<text x="1445" y="505" text-anchor="middle" class="s">계약·요율·중복 검사</text>
+<text x="1445" y="534" text-anchor="middle" class="s">0.30 USD/kWh</text>
+<text x="1445" y="563" text-anchor="middle" class="s">미결제 모의 청구</text>
+<rect x="24" y="665" width="1552" height="166" rx="18" fill="#eff9ff" stroke="#78c8ef" stroke-width="2"/>
+<text x="70" y="701" text-anchor="start" class="h">실행·검증·증거</text>
+<rect x="47" y="721" width="268" height="85" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="181.0" y="754" text-anchor="middle" class="t">review_clean_runtime.sh</text>
+<text x="181.0" y="784" text-anchor="middle" class="s">준비 → 충전 → 종료 → 검사</text>
+<rect x="378" y="721" width="300" height="85" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="528.0" y="754" text-anchor="middle" class="t">verify_backend.py</text>
+<text x="528.0" y="784" text-anchor="middle" class="s">거래·CDR 전달·invoice hash</text>
+<rect x="741" y="721" width="300" height="85" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="891.0" y="754" text-anchor="middle" class="t">review_result.py</text>
+<text x="891.0" y="784" text-anchor="middle" class="s">PnC·에너지·계산 증거 검사</text>
+<rect x="1104" y="721" width="448" height="85" rx="18" fill="white" stroke="#b5c8de" stroke-width="2"/>
+<text x="1328.0" y="754" text-anchor="middle" class="t">diagnostics/ · evidence/</text>
+<text x="1328.0" y="784" text-anchor="middle" class="s">세션·OCPP·CDR·청구·실행별 판정</text>
+<path d="M324 762L367 762" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="345.5" y="746" text-anchor="middle" class="s"></text>
+<path d="M687 762L730 762" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="708.5" y="746" text-anchor="middle" class="s"></text>
+<path d="M1050 762L1093 762" stroke="#637990" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+<text x="1071.5" y="746" text-anchor="middle" class="s"></text>
+<rect x="24" y="854" width="1552" height="116" rx="18" fill="#f5f8fc" stroke="#99b2cd" stroke-width="2"/>
+<text x="70" y="890" text-anchor="start" class="h">배포와 실행의 분리</text>
+<text x="70" y="925" text-anchor="start" class="t">GitHub 저장소: 코드·설정·lock  →  GHCR: 실행 이미지  →  팀원 PC의 Docker: 실제 실행</text>
+<text x="70" y="950" text-anchor="start" class="s">Compose: coop-everest-clean / coop-sil-billing · 이미지 digest 고정 · 개인키와 DB는 로컬 볼륨</text>
+<rect x="24" y="990" width="1552" height="45" rx="18" fill="#fff8f7" stroke="#ec9797" stroke-width="2"/>
+<text x="800" y="1019" text-anchor="middle" class="t">순수 SIL 실험 · 실차·PLC/EVSE ECU·CAN·실제 전력계·실제 결제 미포함</text>
+</svg>
