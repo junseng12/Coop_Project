@@ -111,7 +111,7 @@
 
   /* pipeline */
   .pipe-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
-  .pipe-scroll{overflow-x:auto;padding-bottom:6px}
+  .pipe-scroll{overflow-x:auto;padding:14px 0 6px}
   .pipe{display:flex;align-items:stretch;min-width:720px}
   .stage{flex:1;min-width:108px;display:flex;flex-direction:column}
   .stage .box{position:relative;flex:1;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);padding:11px;
@@ -287,13 +287,13 @@
 
   <div class="note">
     <b>작동 순서(발표 권장).</b>
-    ① <code>inject off</code> 후 <code>start</code> → 정상 충전·완충 → 청구서 $14.40 확인 ·
-    ② <code>reset</code> → <code>inject M4 4</code> → <code>start</code> → 완충 시 자동 종료, 흐름도가 M4에서 변조를 표시하고 청구서 $1.20 발행 ·
+    ① <code>inject off</code> 후 <code>start</code> → 정상 완충 → 실제 전량 청구 확인 ·
+    ② <code>reset</code> → <code>inject M4 10</code> → <code>start</code> → 완충 시 자동 종료, 흐름도가 M4에서 변조(실제의 10%만 보고)를 표시하고 청구서가 1/10 수준으로 발행 ·
     ③ <code>▶ 흐름 재생</code> 으로 자동차→충전기→결제기 서사 반복 재생 ·
-    ④ <code>inject M1 4</code> / <code>M2</code> / <code>M3</code> 로 바꿔 탐지 경계가 어떻게 달라지는지 비교. 상단 <b>발표 결과 ↗</b> 는 M1~M4 종합 정리입니다.
+    ④ <code>inject M1 10</code> / <code>M2</code> / <code>M3</code> 로 바꿔 탐지 경계가 어떻게 달라지는지 비교. 상단 <b>발표 결과 ↗</b> 는 M1~M4 종합 정리입니다.
     <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
     <b>동작.</b> <code>start</code> → SLAC·ISO 15118-2 TLS·PnC 계약 인증·전력 인출 순으로 진행되며 계량이 누적됩니다. 완충(SoC 100%) 또는 <code>stop</code> 시 거래가 종료되어 OCPP TransactionEvent → OCPI CDR → 청구서가 생성됩니다.
-    <code>inject M1~M4 &lt;kWh&gt;</code> 로 특정 계층에서 보고 에너지를 낮추면(많이 충전·적게 청구) 청구서가 작아지고 어느 계층 대조에서 탐지되는지 표시됩니다. 금액 산식은 <code>billing/engine.py</code>와 동일(통화별 소수자리·ROUND_HALF_UP)하며 <code>SIMULATED_INVOICE_NOT_PAID</code> 모의 명세입니다. 실제 결제·물리 계량·계량 서명은 포함하지 않습니다.
+    <code>inject M1~M4 &lt;%&gt;</code> 로 특정 계층에서 실제의 N%만 보고하면(많이 충전·적게 청구) 청구서가 작아지고 어느 계층 대조에서 탐지되는지 표시됩니다. 금액 산식은 <code>billing/engine.py</code>와 동일(통화별 소수자리·ROUND_HALF_UP)하며 <code>SIMULATED_INVOICE_NOT_PAID</code> 모의 명세입니다. 실제 결제·물리 계량·계량 서명은 포함하지 않습니다.
   </div>
 </div>
 
@@ -326,13 +326,15 @@ function reset(full){
   S={phase:"idle",capacity:(full&&S.capacity)||60,soc0:(full&&S.soc0!=null)?S.soc0:20,
      delivered:0,amps:(full&&S.amps)||16,phases:(full&&S.phases)||3,voltage:230,
      rate:(full&&S.rate)||0.30,currency:(full&&S.currency)||"USD",
-     inject:(full&&S.inject)||{point:null,kwh:null},
+     inject:(full&&S.inject)||{point:null,pct:null},
      simSec:0,sessionId:null,startedAt:null,endedAt:null,lastMeterLog:0,busy:false};
 }
 reset(false);
 
 function powerKw(){return S.amps*S.phases*S.voltage/1000;}
 function socPct(){return Math.min(100,S.soc0 + (S.delivered/S.capacity)*100);}
+// Manipulation = under-report a fraction of the actual energy, so it always lowers the bill.
+function reportedEnergy(trueE){return S.inject.point!=null?trueE*S.inject.pct/100:trueE;}
 function hms(sec){sec=Math.floor(sec);const h=String(Math.floor(sec/3600)).padStart(2,"0");
   const m=String(Math.floor(sec%3600/60)).padStart(2,"0");const s=String(sec%60).padStart(2,"0");return `${h}:${m}:${s}`;}
 function roundHalfUp(x,d){const f=Math.pow(10,d);return (Math.sign(x)*Math.floor(Math.abs(x)*f+0.5))/f;}
@@ -384,7 +386,7 @@ function finalize(reason){
   log(reason,"warn");
   log(`OCPP TransactionEvent(Ended) · 누적 ${fmtE(S.delivered)} kWh`,"evt");
   // reported energy = injected value if active, else true delivered
-  const rep = S.inject.point!=null ? S.inject.kwh : S.delivered;
+  const rep = reportedEnergy(S.delivered);
   log(`OCPI CDR 생성 · session_id=${S.sessionId} · total_energy=${fmtE(rep)} kWh`,"evt");
   const d=CUR_DIGITS[S.currency];
   const amt=roundHalfUp(rep*S.rate,d);
@@ -455,7 +457,7 @@ function stageVal(i){
   // live true delivered everywhere until injection known; injected stages (>=idx) show reported value
   const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
   if(inj==null) return S.delivered;
-  return i>=inj ? S.inject.kwh : S.delivered;
+  return i>=inj ? reportedEnergy(S.delivered) : S.delivered;
 }
 function renderPipeline(){
   const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
@@ -484,7 +486,7 @@ function renderInvoice(){
   if(S.phase!=="ended"){empty.hidden=false;full.hidden=true;return;}
   empty.hidden=true;full.hidden=false;
   const d=CUR_DIGITS[S.currency];
-  const rep=S.inject.point!=null?S.inject.kwh:S.delivered;
+  const rep=reportedEnergy(S.delivered);
   const amt=roundHalfUp(rep*S.rate,d);
   const trueA=roundHalfUp(S.delivered*S.rate,d);
   const gap=roundHalfUp((S.delivered-rep)*S.rate,d);
@@ -519,7 +521,7 @@ function sceneData(){
   const target=(100-S.soc0)/100*S.capacity;
   const trueE=S.delivered>0.0001?S.delivered:(target>0?target:48);
   const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
-  const reported=inj!=null?S.inject.kwh:trueE;
+  const reported=reportedEnergy(trueE);
   return {trueE,reported,inj,point:S.inject.point};
 }
 function renderMmarks(active){
@@ -577,7 +579,7 @@ function playFlow(){
 const HELP=[
   ["start / start-session","충전 세션 시작 (SLAC→V2G→PnC→충전)"],
   ["stop / stop-session","충전 종료 → 청구서 생성"],
-  ["inject M1|M2|M3|M4 <kWh>","해당 계층에서 보고 에너지를 낮춤(변조)"],
+  ["inject M1|M2|M3|M4 <%>","해당 계층에서 실제의 N%만 보고(변조·항상 저가청구)"],
   ["inject off","변조 해제"],
   ["set rate <v> / set currency USD|EUR|KRW","요율·통화"],
   ["set capacity <kWh> / set soc <%>","배터리 용량·시작 SoC"],
@@ -599,16 +601,16 @@ function runCmd(raw){
   if(c==="reset"){reset(true);renderAll();log("세션 상태 초기화 (설정 유지).","ok");return;}
   if(c==="status"){
     log(`phase=${S.phase} soc=${socPct().toFixed(1)}% delivered=${fmtE(S.delivered)}kWh power=${powerKw().toFixed(2)}kW`,"info");
-    log(`rate=${S.rate} ${S.currency} capacity=${S.capacity}kWh soc0=${S.soc0}% inject=${S.inject.point?S.inject.point+" @"+S.inject.kwh+"kWh":"off"}`,"info");return;
+    log(`rate=${S.rate} ${S.currency} capacity=${S.capacity}kWh soc0=${S.soc0}% inject=${S.inject.point?S.inject.point+" @실제의 "+S.inject.pct+"%":"off"}`,"info");return;
   }
   if(c==="inject"){
     const p=(a[1]||"").toUpperCase();
-    if(p==="OFF"){S.inject={point:null,kwh:null};renderAll();log("변조 해제.","ok");return;}
-    if(!INJECT_IDX[p]){log("사용법: inject M1|M2|M3|M4 <kWh>  또는  inject off","err");return;}
-    const v=parseFloat(a[2]);
-    if(!(v>=0)){log("변조 보고값(kWh)을 숫자로 지정하세요. 예: inject M4 5","err");return;}
-    S.inject={point:p,kwh:v};renderAll();
-    log(`변조 설정: ${p} 지점에서 보고 에너지 ${fmtE(v)} kWh 로 축소.`,"warn");
+    if(p==="OFF"){S.inject={point:null,pct:null};renderAll();log("변조 해제.","ok");return;}
+    if(!INJECT_IDX[p]){log("사용법: inject M1|M2|M3|M4 <퍼센트>  (실제의 N%만 보고) 또는 inject off","err");return;}
+    const v=parseFloat((a[2]||"").replace("%",""));
+    if(!(v>0&&v<100)){log("축소 비율을 0~100 사이로 지정하세요. 예: inject M4 10  (실제의 10%만 보고 → 값싸게 충전)","err");return;}
+    S.inject={point:p,pct:v};renderAll();
+    log(`변조 설정: ${p} 지점에서 보고 에너지를 실제의 ${v}% 로 축소(항상 실제보다 적게 보고).`,"warn");
     log(`→ 탐지 경계: ${BOUNDARY[INJECT_IDX[p]-1]}`,"dim");return;
   }
   if(c==="set"){
@@ -635,7 +637,7 @@ $("cmd").addEventListener("keydown",e=>{
 });
 
 // chips
-const CHIPS=["start","stop","inject M4 4","inject M1 4","inject off","flow","set currency KRW","status","reset","clear","help"];
+const CHIPS=["start","stop","inject M4 10","inject M1 10","inject off","flow","set currency KRW","status","reset","clear","help"];
 $("chips").innerHTML=CHIPS.map(c=>`<button type="button" class="chip" data-c="${c}">${c}</button>`).join("");
 $("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;runCmd(b.dataset.c);$("cmd").focus();});
 $("playBtn").addEventListener("click",playFlow);
