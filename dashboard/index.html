@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  /* standalone base reset (replicates the claude.ai artifact host skeleton) */
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{background:#f6f7f9;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>충전 세션 터미널</title>
+<meta name="description" content="명령어로 충전 세션을 진행하고 완충·종료 시 청구서가 생성되는 EVerest–CitrineOS SIL 동적 콘솔">
+<style>
+  /* Layout: command terminal (left) + live telemetry (right), pipeline strip, invoice card */
+  :root{
+    --bg:#eef2f6; --panel:#ffffff; --panel-2:#e7edf3; --ink:#15202b; --muted:#5b6b7a;
+    --line:#d3dce4; --accent:#1f6feb; --accent-soft:#e3edfd;
+    --good:#1a7f5a; --good-soft:#dcf3e9; --bad:#c4362f; --bad-soft:#fbe3e1;
+    --warn:#9a6a00; --warn-soft:#f6ecd2; --true:#0d7d8c; --energy:#2f8f3e;
+    --term-bg:#0d1620; --term-ink:#c9e2d6; --term-dim:#6d8a84; --term-line:#1d2b36;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'IBM Plex Sans KR','IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0b1118; --panel:#141d27; --panel-2:#1b2630; --ink:#e6edf3; --muted:#93a4b4;
+    --line:#283642; --accent:#4e93ff; --accent-soft:#16304f;
+    --good:#43c08a; --good-soft:#123326; --bad:#ff6b60; --bad-soft:#3a1715;
+    --warn:#e0ad4b; --warn-soft:#332813; --true:#3fc3d4; --energy:#49c15e;
+    --term-bg:#080f16; --term-ink:#c9e2d6; --term-dim:#5e7a74; --term-line:#17232d; color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0b1118; --panel:#141d27; --panel-2:#1b2630; --ink:#e6edf3; --muted:#93a4b4;
+    --line:#283642; --accent:#4e93ff; --accent-soft:#16304f;
+    --good:#43c08a; --good-soft:#123326; --bad:#ff6b60; --bad-soft:#3a1715;
+    --warn:#e0ad4b; --warn-soft:#332813; --true:#3fc3d4; --energy:#49c15e;
+    --term-bg:#080f16; --term-ink:#c9e2d6; --term-dim:#5e7a74; --term-line:#17232d; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;margin:0}
+  .wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:0 40px}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  .mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .top-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .brand{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0}
+  .brand h1{font-size:18px;font-weight:600;letter-spacing:-.2px}
+  .brand .sub{font-size:12px;color:var(--muted)}
+  .pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted);white-space:nowrap}
+  .tgl{font:inherit;font-size:12px;cursor:pointer;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:6px 10px}
+
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:20px 0 10px}
+
+  .grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+  /* terminal */
+  .term{background:var(--term-bg);border:1px solid var(--term-line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;min-height:360px}
+  .term-bar{display:flex;align-items:center;gap:7px;padding:9px 13px;border-bottom:1px solid var(--term-line)}
+  .term-bar .d{width:11px;height:11px;border-radius:50%}
+  .term-bar .t{margin-left:8px;font-family:var(--mono);font-size:11.5px;color:var(--term-dim)}
+  .term-out{flex:1;overflow-y:auto;padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:var(--term-ink);
+    white-space:pre-wrap;word-break:break-word;max-height:340px}
+  .term-out .ln{margin:1px 0}
+  .ln .ts{color:var(--term-dim)}
+  .ln.cmd{color:#eaf4ee} .ln.cmd .pr{color:#5fb8ff}
+  .ln.ok{color:#5fd39a} .ln.info{color:var(--term-ink)} .ln.dim{color:var(--term-dim)}
+  .ln.warn{color:#e7b84f} .ln.err{color:#ff8178} .ln.evt{color:#8fb4ff}
+  .term-in{display:flex;align-items:center;gap:8px;border-top:1px solid var(--term-line);padding:9px 13px}
+  .term-in .pr{font-family:var(--mono);font-size:13px;color:#5fb8ff;flex:none}
+  .term-in input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--term-ink);
+    font-family:var(--mono);font-size:13px;caret-color:#5fd39a}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 12px}
+  .chip{font-family:var(--mono);font-size:11px;cursor:pointer;border:1px solid var(--term-line);background:#111d27;color:#9fc3d6;
+    border-radius:7px;padding:4px 9px}
+  .chip:hover{border-color:#2f6b8f;color:#cfe8f3}
+
+  /* telemetry */
+  .tele{display:flex;flex-direction:column;gap:14px}
+  .statechips{display:flex;flex-wrap:wrap;gap:7px}
+  .sc{font-family:var(--mono);font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .sc .b{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .sc.on{color:var(--good);border-color:var(--good);background:var(--good-soft)} .sc.on .b{background:var(--good)}
+  .sc.active{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)} .sc.active .b{background:var(--accent);animation:pulse 1s infinite}
+  .sc.ended{color:var(--ink);border-color:var(--line)}
+  @keyframes pulse{50%{opacity:.35}}
+
+  .gauge-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .soc-wrap{display:flex;align-items:center;gap:16px}
+  .soc-ring{position:relative;flex:none;width:118px;height:118px}
+  .soc-ring svg{transform:rotate(-90deg)}
+  .soc-ring .pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .soc-ring .pct b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;line-height:1}
+  .soc-ring .pct span{font-size:10px;color:var(--muted);letter-spacing:.1em}
+  .readouts{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;min-width:0}
+  .ro{display:flex;flex-direction:column;gap:2px}
+  .ro .l{font-size:11px;color:var(--muted);font-weight:600}
+  .ro .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;letter-spacing:-.3px}
+  .ro .v small{font-size:11px;color:var(--muted);font-weight:500}
+  .ro.energy .v{color:var(--energy)}
+
+  /* pipeline */
+  .pipe-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .pipe-scroll{overflow-x:auto;padding-bottom:6px}
+  .pipe{display:flex;align-items:stretch;min-width:720px}
+  .stage{flex:1;min-width:108px;display:flex;flex-direction:column}
+  .stage .box{position:relative;flex:1;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);padding:11px;
+    display:flex;flex-direction:column;gap:4px;min-height:104px}
+  .stage .s-name{font-size:12px;font-weight:600;line-height:1.25}
+  .stage .s-sub{font-size:10px;color:var(--muted);line-height:1.3}
+  .stage .s-val{margin-top:auto;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600}
+  .stage .s-val small{font-size:10px;color:var(--muted);font-weight:500}
+  .stage.v-true .s-val{color:var(--true)}
+  .stage.v-manip .box{border-color:var(--bad);background:var(--bad-soft)} .stage.v-manip .s-val{color:var(--bad)}
+  .stage.injected .box{box-shadow:0 0 0 2px var(--bad)}
+  .inject-tag{position:absolute;top:-9px;left:7px;font-family:var(--mono);font-size:9.5px;font-weight:700;color:#fff;background:var(--bad);padding:2px 6px;border-radius:999px;white-space:nowrap}
+  .conn{display:flex;align-items:center;justify-content:center;width:26px;flex:none;align-self:center}
+  .conn span{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--line)}
+  .conn.bad span{color:var(--bad)}
+
+  /* invoice */
+  .inv-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .inv-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .inv-head h3{font-size:15px;font-weight:600}
+  .inv-status{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--warn);background:var(--warn-soft);padding:3px 9px;border-radius:6px}
+  .inv-body{padding:18px;display:grid;grid-template-columns:1.1fr 1fr;gap:18px}
+  @media(max-width:620px){.inv-body{grid-template-columns:1fr}}
+  .inv-amt{display:flex;flex-direction:column;gap:4px}
+  .inv-amt .big{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:40px;font-weight:600;letter-spacing:-1px;line-height:1}
+  .inv-amt .big small{font-size:18px;color:var(--muted)}
+  .inv-amt .calc{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .inv-meta{display:flex;flex-direction:column;gap:7px;font-size:12.5px;min-width:0}
+  .inv-meta .row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:5px}
+  .inv-meta .row span:first-child{color:var(--muted)}
+  .inv-meta .row span:last-child{font-family:var(--mono);text-align:right;word-break:break-all}
+  .fraud{margin:0 18px 18px;border:1px solid var(--bad);border-left:5px solid var(--bad);background:var(--bad-soft);border-radius:10px;padding:13px 15px;font-size:13px}
+  .fraud b{font-weight:600}
+  .fraud .mini{margin-top:9px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:520px){.fraud .mini{grid-template-columns:1fr}}
+  .fraud .mini div{background:color-mix(in srgb,var(--panel) 70%,transparent);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .fraud .mini .l{font-size:10.5px;color:var(--muted);font-weight:600}
+  .fraud .mini .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;font-weight:600}
+  .empty-inv{padding:26px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+  .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
+  .note b{color:var(--ink)}
+  .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <h1>충전 세션 터미널</h1>
+      <span class="sub">Virtual EV · EVerest · CitrineOS · OCPI · Billing — 명령어로 진행하는 SIL 콘솔</span>
+    </div>
+    <span class="pill" id="ratePill">0.30 USD/kWh</span>
+    <button class="tgl" id="themeBtn" type="button">테마</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- terminal -->
+    <div>
+      <div class="eyebrow">명령어 콘솔</div>
+      <div class="term">
+        <div class="term-bar">
+          <span class="d" style="background:#ff5f56"></span><span class="d" style="background:#ffbd2e"></span><span class="d" style="background:#27c93f"></span>
+          <span class="t">carsim@everest — mosquitto_pub · OCPP201 · OCPI 2.2.1</span>
+        </div>
+        <div class="term-out" id="out" aria-live="polite"></div>
+        <div class="chips" id="chips"></div>
+        <form class="term-in" id="form">
+          <span class="pr">&gt;</span>
+          <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="명령 입력 후 Enter · help 로 목록" aria-label="명령어 입력">
+        </form>
+      </div>
+    </div>
+
+    <!-- telemetry -->
+    <div>
+      <div class="eyebrow">실시간 세션 상태</div>
+      <div class="tele">
+        <div class="statechips" id="states"></div>
+        <div class="gauge-card">
+          <div class="soc-wrap">
+            <div class="soc-ring">
+              <svg width="118" height="118" viewBox="0 0 118 118">
+                <circle cx="59" cy="59" r="50" fill="none" stroke="var(--line)" stroke-width="11"/>
+                <circle id="socArc" cx="59" cy="59" r="50" fill="none" stroke="var(--energy)" stroke-width="11"
+                        stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
+              </svg>
+              <div class="pct"><b id="socPct">20</b><span>SoC %</span></div>
+            </div>
+            <div class="readouts">
+              <div class="ro energy"><span class="l">전달 에너지</span><span class="v" id="roE">0.000 <small>kWh</small></span></div>
+              <div class="ro"><span class="l">순시 전력</span><span class="v" id="roP">0.00 <small>kW</small></span></div>
+              <div class="ro"><span class="l">세션 시간</span><span class="v" id="roT">00:00:00</span></div>
+              <div class="ro"><span class="l">배터리 용량</span><span class="v" id="roC">60 <small>kWh</small></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="eyebrow">계층별 에너지 흐름</div>
+  <div class="pipe-card">
+    <div class="pipe-scroll"><div class="pipe" id="pipe"></div></div>
+  </div>
+
+  <div class="eyebrow">청구서</div>
+  <div class="inv-card" id="invCard">
+    <div class="empty-inv" id="invEmpty">세션 종료 시 생성됩니다. <span class="mono">start</span> 로 충전을 시작하고, 완충되거나 <span class="mono">stop</span> 입력 시 청구서가 발행됩니다.</div>
+    <div id="invFull" hidden></div>
+  </div>
+
+  <div class="note">
+    <b>동작.</b> <code>start</code> → SLAC·ISO 15118-2 TLS·PnC 계약 인증·전력 인출 순으로 진행되며 계량이 누적됩니다. 완충(SoC 100%) 또는 <code>stop</code> 시 거래가 종료되어 OCPP TransactionEvent → OCPI CDR → 청구서가 생성됩니다.
+    <code>inject M1~M4 &lt;kWh&gt;</code> 로 특정 계층에서 보고 에너지를 낮추면(많이 충전·적게 청구) 청구서가 작아지고 어느 계층 대조에서 탐지되는지 표시됩니다. 금액 산식은 <code>billing/engine.py</code>와 동일(통화별 소수자리·ROUND_HALF_UP)하며 <code>SIMULATED_INVOICE_NOT_PAID</code> 모의 명세입니다. 실제 결제·물리 계량·계량 서명은 포함하지 않습니다.
+  </div>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const CUR_DIGITS={KRW:0,USD:2,EUR:2};
+const STAGES=[
+  {name:"SIL 기준 계량",sub:"변조 경로 밖 기록"},
+  {name:"EVerest 계량",sub:"YetiSimulator"},
+  {name:"OCPP 전송",sub:"TransactionEvent"},
+  {name:"CitrineOS DB",sub:"거래·계량 저장"},
+  {name:"OCPI CDR",sub:"total_energy"},
+  {name:"청구서",sub:"energy × rate"},
+];
+const BOUNDARY=[
+  "SIL 기준값 ↔ EVerest 계량 로그",
+  "EVerest meterValue ↔ CSMS 저장값",
+  "수신 OCPP 이벤트 ↔ CitrineOS 거래값",
+  "CitrineOS DB ↔ OCPI total_energy",
+  "OCPI total_energy ↔ invoice.energy_kwh",
+];
+const INJECT_IDX={M1:1,M2:2,M3:3,M4:4};
+const PHASES=["idle","slac","v2g","pnc","ready","charging","ended"];
+const SIM_SPEED=300;      // 1 real second = 300 sim seconds
+const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
+
+let S={};
+function reset(full){
+  S={phase:"idle",capacity:(full&&S.capacity)||60,soc0:(full&&S.soc0!=null)?S.soc0:20,
+     delivered:0,amps:(full&&S.amps)||16,phases:(full&&S.phases)||3,voltage:230,
+     rate:(full&&S.rate)||0.30,currency:(full&&S.currency)||"USD",
+     inject:(full&&S.inject)||{point:null,kwh:null},
+     simSec:0,sessionId:null,startedAt:null,endedAt:null,lastMeterLog:0,busy:false};
+}
+reset(false);
+
+function powerKw(){return S.amps*S.phases*S.voltage/1000;}
+function socPct(){return Math.min(100,S.soc0 + (S.delivered/S.capacity)*100);}
+function hms(sec){sec=Math.floor(sec);const h=String(Math.floor(sec/3600)).padStart(2,"0");
+  const m=String(Math.floor(sec%3600/60)).padStart(2,"0");const s=String(sec%60).padStart(2,"0");return `${h}:${m}:${s}`;}
+function roundHalfUp(x,d){const f=Math.pow(10,d);return (Math.sign(x)*Math.floor(Math.abs(x)*f+0.5))/f;}
+function fmtMoney(v,c){const d=CUR_DIGITS[c];return v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtE(v){return (Math.round(v*1000)/1000).toFixed(3);}
+function uid(){let s="";for(let i=0;i<8;i++)s+=Math.floor(Math.random()*16).toString(16);
+  return `${s}-${Math.floor(Math.random()*65536).toString(16).padStart(4,"0")}-4${Math.floor(Math.random()*4096).toString(16).padStart(3,"0")}`;}
+
+// ---- terminal log ----
+function log(text,cls="info"){
+  const out=$("out");const div=document.createElement("div");div.className="ln "+cls;
+  const now=new Date();const ts=`[${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}] `;
+  if(cls==="cmd"){div.innerHTML=`<span class="pr">&gt; </span>${esc(text)}`;}
+  else{div.innerHTML=`<span class="ts">${ts}</span>${esc(text)}`;}
+  out.appendChild(div);out.scrollTop=out.scrollHeight;
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+// ---- state transitions for start ----
+function setPhase(p){S.phase=p;renderStates();}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function startSession(){
+  if(S.busy){log("이미 진행 중인 전환이 있습니다.","warn");return;}
+  if(S.phase==="charging"){log("이미 충전 중입니다.","warn");return;}
+  if(S.phase!=="idle" && S.phase!=="ended"){log("세션을 start 할 수 없는 상태입니다. reset 후 다시 시도.","warn");return;}
+  reset(true);                       // keep config, fresh session
+  S.busy=true;
+  S.sessionId=uid();
+  S.startedAt=new Date().toISOString();
+  log("carsim: iso_wait_slac_matched","dim"); setPhase("slac"); renderAll(); await sleep(700);
+  log("SLAC matched — PLC 링크 수립","ok");
+  log("carsim: iso_start_v2g_session ac,-1,-1","dim"); setPhase("v2g"); renderStates(); await sleep(750);
+  log("ISO 15118-2 TLS 세션 수립 · 계약 체인 검증 시작","ok");
+  setPhase("pnc"); renderStates(); await sleep(850);
+  log("PnC 계약 인증서 체인 검증 · eMAID NL123C10028948M · OCSP good","evt");
+  log("CSMS Authorize → Accepted","ok");
+  log(`OCPP TransactionEvent(Started) transactionId=${S.sessionId}`,"evt");
+  log("carsim: iso_wait_pwr_ready","dim"); setPhase("ready"); renderStates(); await sleep(500);
+  log(`carsim: iso_draw_power_regulated ${S.amps},${S.phases} → ${powerKw().toFixed(2)} kW`,"dim");
+  setPhase("charging"); S.lastMeterLog=0; S.busy=false;
+  log("충전 시작 — 계량 누적 중 (meterValue 주기 보고)","ok");
+  loopStart();
+}
+
+function finalize(reason){
+  if(S.phase!=="charging") return;
+  S.phase="ended"; S.endedAt=new Date().toISOString();
+  log(reason,"warn");
+  log(`OCPP TransactionEvent(Ended) · 누적 ${fmtE(S.delivered)} kWh`,"evt");
+  // reported energy = injected value if active, else true delivered
+  const rep = S.inject.point!=null ? S.inject.kwh : S.delivered;
+  log(`OCPI CDR 생성 · session_id=${S.sessionId} · total_energy=${fmtE(rep)} kWh`,"evt");
+  const d=CUR_DIGITS[S.currency];
+  const amt=roundHalfUp(rep*S.rate,d);
+  log(`Billing: INVOICED · ${fmtMoney(amt,S.currency)} ${S.currency} · status=SIMULATED_INVOICE_NOT_PAID`, S.inject.point?"warn":"ok");
+  if(S.inject.point){
+    const tA=roundHalfUp(S.delivered*S.rate,d);
+    log(`⚠ 변조 탐지: ${S.inject.point} — 참 ${fmtMoney(tA,S.currency)} vs 청구 ${fmtMoney(amt,S.currency)} ${S.currency} · 경계 [${BOUNDARY[INJECT_IDX[S.inject.point]-1]}]`,"err");
+  }
+  renderAll();
+}
+
+function stopSession(){
+  if(S.phase==="charging"){
+    log("carsim: iso_stop_charging; iso_wait_v2g_session_stopped; unplug","dim");
+    finalize("사용자 종료 (stop-session)");
+  } else if(S.busy){ log("세션 준비 중입니다. 잠시 후 stop 하세요.","warn"); }
+  else { log("충전 중이 아닙니다.","warn"); }
+}
+
+// ---- charging loop ----
+let rafId=null,lastTs=null;
+function loopStart(){lastTs=null;if(rafId)cancelAnimationFrame(rafId);rafId=requestAnimationFrame(tick);}
+function tick(ts){
+  if(S.phase!=="charging"){rafId=null;return;}
+  if(lastTs==null)lastTs=ts;
+  const dtReal=(ts-lastTs)/1000; lastTs=ts;
+  const dtSim=dtReal*SIM_SPEED;
+  S.simSec+=dtSim;
+  const dE=powerKw()*(dtSim/3600);
+  const maxDeliver=(100-S.soc0)/100*S.capacity;
+  S.delivered=Math.min(S.delivered+dE,maxDeliver);
+  if(S.simSec-S.lastMeterLog>=METER_LOG_EVERY){
+    S.lastMeterLog=S.simSec;
+    log(`meterValue — ${fmtE(S.delivered)} kWh @ ${hms(S.simSec)} · SoC ${socPct().toFixed(1)}%`,"dim");
+  }
+  renderMetrics(); renderPipeline();
+  if(S.delivered>=maxDeliver-1e-9){ renderMetrics(); finalize("배터리 완충 (SoC 100%) → 세션 자동 종료"); return; }
+  rafId=requestAnimationFrame(tick);
+}
+
+// ---- render ----
+function renderStates(){
+  const map=[["idle","대기"],["slac","SLAC"],["v2g","V2G·TLS"],["pnc","PnC 인증"],["ready","전력 준비"],["charging","충전 중"],["ended","종료"]];
+  const cur=PHASES.indexOf(S.phase);
+  $("states").innerHTML=map.map(([k,label])=>{
+    const idx=PHASES.indexOf(k);let cls="sc";
+    if(k===S.phase){cls+= S.phase==="ended"?" ended":(S.phase==="charging"||S.phase==="idle"?(S.phase==="charging"?" active":""):" active");}
+    if(idx<cur && k!=="idle") cls+=" on";
+    if(k==="charging"&&S.phase==="charging")cls="sc active";
+    if(k==="ended"&&S.phase==="ended")cls="sc on ended";
+    return `<span class="${cls}"><span class="b"></span>${label}</span>`;
+  }).join("");
+}
+function renderMetrics(){
+  const pct=socPct();
+  $("socPct").textContent=pct.toFixed(pct>=100||pct===Math.floor(pct)?0:1).replace(/\.0$/,"");
+  const circ=2*Math.PI*50;
+  $("socArc").setAttribute("stroke-dashoffset", (circ*(1-pct/100)).toFixed(2));
+  $("socArc").setAttribute("stroke", pct>=100?"var(--good)":"var(--energy)");
+  $("roE").innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`;
+  $("roP").innerHTML=`${(S.phase==="charging"?powerKw():0).toFixed(2)} <small>kW</small>`;
+  $("roT").textContent=hms(S.simSec);
+  $("roC").innerHTML=`${S.capacity} <small>kWh</small>`;
+  $("ratePill").textContent=`${S.rate.toFixed(2)} ${S.currency}/kWh`;
+}
+function stageVal(i){
+  // live true delivered everywhere until injection known; injected stages (>=idx) show reported value
+  const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
+  if(inj==null) return S.delivered;
+  return i>=inj ? S.inject.kwh : S.delivered;
+}
+function renderPipeline(){
+  const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
+  const d=CUR_DIGITS[S.currency];
+  const pipe=$("pipe");pipe.innerHTML="";
+  STAGES.forEach((s,i)=>{
+    const manip=(inj!=null && i>=inj);
+    const injected=(inj!=null && i===inj);
+    const st=document.createElement("div");
+    st.className=`stage ${manip?"v-manip":"v-true"} ${injected?"injected":""}`;
+    let valStr;
+    if(i===5){const e=stageVal(5);valStr=`${fmtMoney(roundHalfUp(e*S.rate,d),S.currency)} <small>${S.currency}</small>`;}
+    else valStr=`${fmtE(stageVal(i))} <small>kWh</small>`;
+    st.innerHTML=`<div class="box">${injected?`<span class="inject-tag">▼ ${S.inject.point}</span>`:""}`+
+      `<div class="s-name">${s.name}</div><div class="s-sub">${s.sub}</div><div class="s-val">${valStr}</div></div>`;
+    pipe.appendChild(st);
+    if(i<STAGES.length-1){
+      const mism=(inj!=null && i+1===inj);
+      const c=document.createElement("div");c.className="conn"+(mism?" bad":"");
+      c.innerHTML=`<span>${mism?"≠":"→"}</span>`;pipe.appendChild(c);
+    }
+  });
+}
+function renderInvoice(){
+  const full=$("invFull"),empty=$("invEmpty");
+  if(S.phase!=="ended"){empty.hidden=false;full.hidden=true;return;}
+  empty.hidden=true;full.hidden=false;
+  const d=CUR_DIGITS[S.currency];
+  const rep=S.inject.point!=null?S.inject.kwh:S.delivered;
+  const amt=roundHalfUp(rep*S.rate,d);
+  const trueA=roundHalfUp(S.delivered*S.rate,d);
+  const gap=roundHalfUp((S.delivered-rep)*S.rate,d);
+  const invId="SIM-"+(S.sessionId||"").replace(/-/g,"").slice(0,16).toUpperCase();
+  let html=`<div class="inv-head"><h3>모의 청구서 · LAB_BILLING_STATEMENT</h3><span class="inv-status">SIMULATED_INVOICE_NOT_PAID</span></div>`+
+    `<div class="inv-body"><div class="inv-amt"><div class="big">${fmtMoney(amt,S.currency)} <small>${S.currency}</small></div>`+
+    `<div class="calc">${fmtE(rep)} kWh × ${S.rate.toFixed(2)} ${S.currency}/kWh · ROUND_HALF_UP</div></div>`+
+    `<div class="inv-meta">`+
+    `<div class="row"><span>invoice_id</span><span>${invId}</span></div>`+
+    `<div class="row"><span>session_id</span><span>${S.sessionId||"-"}</span></div>`+
+    `<div class="row"><span>청구 에너지</span><span>${fmtE(rep)} kWh</span></div>`+
+    `<div class="row"><span>실제 전달(SIL 기준)</span><span>${fmtE(S.delivered)} kWh</span></div>`+
+    `<div class="row"><span>통화 / 요율</span><span>${S.currency} / ${S.rate.toFixed(2)}</span></div>`+
+    `</div></div>`;
+  if(S.inject.point){
+    html+=`<div class="fraud"><b>⚠ 변조 시나리오 성립</b> — 많이 충전(${fmtE(S.delivered)} kWh)하고 적게 청구(${fmtE(rep)} kWh). `+
+      `주입 지점 <b>${S.inject.point}</b>, 탐지 경계 <b>${BOUNDARY[INJECT_IDX[S.inject.point]-1]}</b>.`+
+      (INJECT_IDX[S.inject.point]===1?` M1은 전 계층이 일치하므로 경로 밖 SIL 기준값만이 단서입니다.`:"")+
+      `<div class="mini"><div><div class="l">실제 결제되어야 할 금액</div><div class="v" style="color:var(--true)">${fmtMoney(trueA,S.currency)} ${S.currency}</div></div>`+
+      `<div><div class="l">청구서 금액</div><div class="v" style="color:var(--bad)">${fmtMoney(amt,S.currency)} ${S.currency}</div></div>`+
+      `<div><div class="l">미청구 손실</div><div class="v" style="color:var(--warn)">${fmtMoney(gap,S.currency)} ${S.currency}</div></div></div></div>`;
+  }
+  full.innerHTML=html;
+}
+function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();}
+
+// ---- command parser ----
+const HELP=[
+  ["start / start-session","충전 세션 시작 (SLAC→V2G→PnC→충전)"],
+  ["stop / stop-session","충전 종료 → 청구서 생성"],
+  ["inject M1|M2|M3|M4 <kWh>","해당 계층에서 보고 에너지를 낮춤(변조)"],
+  ["inject off","변조 해제"],
+  ["set rate <v> / set currency USD|EUR|KRW","요율·통화"],
+  ["set capacity <kWh> / set soc <%>","배터리 용량·시작 SoC"],
+  ["set amps <A> / set phases <n>","전류·상 수 (전력 변경)"],
+  ["status / reset / clear","상태 출력 / 초기화 / 로그 지움"],
+];
+function runCmd(raw){
+  const line=raw.trim();if(!line)return;
+  log(line,"cmd");
+  hist.push(line);histIdx=hist.length;
+  const a=line.split(/\s+/);const c=a[0].toLowerCase();
+  try{
+  if(c==="help"){HELP.forEach(([k,v])=>log(`  ${k.padEnd(34)} ${v}`,"dim"));return;}
+  if(c==="start"||c==="start-session"){startSession();return;}
+  if(c==="stop"||c==="stop-session"){stopSession();return;}
+  if(c==="clear"){$("out").innerHTML="";return;}
+  if(c==="reset"){reset(true);renderAll();log("세션 상태 초기화 (설정 유지).","ok");return;}
+  if(c==="status"){
+    log(`phase=${S.phase} soc=${socPct().toFixed(1)}% delivered=${fmtE(S.delivered)}kWh power=${powerKw().toFixed(2)}kW`,"info");
+    log(`rate=${S.rate} ${S.currency} capacity=${S.capacity}kWh soc0=${S.soc0}% inject=${S.inject.point?S.inject.point+" @"+S.inject.kwh+"kWh":"off"}`,"info");return;
+  }
+  if(c==="inject"){
+    const p=(a[1]||"").toUpperCase();
+    if(p==="OFF"){S.inject={point:null,kwh:null};renderAll();log("변조 해제.","ok");return;}
+    if(!INJECT_IDX[p]){log("사용법: inject M1|M2|M3|M4 <kWh>  또는  inject off","err");return;}
+    const v=parseFloat(a[2]);
+    if(!(v>=0)){log("변조 보고값(kWh)을 숫자로 지정하세요. 예: inject M4 5","err");return;}
+    S.inject={point:p,kwh:v};renderAll();
+    log(`변조 설정: ${p} 지점에서 보고 에너지 ${fmtE(v)} kWh 로 축소.`,"warn");
+    log(`→ 탐지 경계: ${BOUNDARY[INJECT_IDX[p]-1]}`,"dim");return;
+  }
+  if(c==="set"){
+    const k=(a[1]||"").toLowerCase();const v=a[2];
+    if(k==="rate"){const n=parseFloat(v);if(!(n>=0))return log("rate 숫자","err");S.rate=n;}
+    else if(k==="currency"){const u=(v||"").toUpperCase();if(!CUR_DIGITS[u])return log("통화: USD|EUR|KRW","err");S.currency=u;}
+    else if(k==="capacity"){const n=parseFloat(v);if(!(n>0))return log("capacity 양수","err");S.capacity=n;}
+    else if(k==="soc"){const n=parseFloat(v);if(!(n>=0&&n<100))return log("soc 0~99","err");S.soc0=n;}
+    else if(k==="amps"){const n=parseFloat(v);if(!(n>0))return log("amps 양수","err");S.amps=n;}
+    else if(k==="phases"){const n=parseInt(v);if(!(n===1||n===3))return log("phases 1 또는 3","err");S.phases=n;}
+    else return log("set rate|currency|capacity|soc|amps|phases <값>","err");
+    renderAll();log(`설정 적용: ${k}=${v}`,"ok");return;
+  }
+  log(`알 수 없는 명령: ${c} — help 참고`,"err");
+  }catch(e){log("오류: "+e.message,"err");}
+}
+
+// history
+let hist=[],histIdx=0;
+$("form").addEventListener("submit",e=>{e.preventDefault();const i=$("cmd");runCmd(i.value);i.value="";});
+$("cmd").addEventListener("keydown",e=>{
+  if(e.key==="ArrowUp"){if(hist.length){histIdx=Math.max(0,histIdx-1);$("cmd").value=hist[histIdx]||"";e.preventDefault();}}
+  else if(e.key==="ArrowDown"){if(hist.length){histIdx=Math.min(hist.length,histIdx+1);$("cmd").value=hist[histIdx]||"";e.preventDefault();}}
+});
+
+// chips
+const CHIPS=["start","stop","inject M4 5","inject off","set currency KRW","set rate 0.30","status","reset","clear","help"];
+$("chips").innerHTML=CHIPS.map(c=>`<button type="button" class="chip" data-c="${c}">${c}</button>`).join("");
+$("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;runCmd(b.dataset.c);$("cmd").focus();});
+
+// theme
+(function(){const btn=$("themeBtn");let t=null;try{t=localStorage.getItem("mterm-theme");}catch(e){}
+  if(t)document.documentElement.setAttribute("data-theme",t);
+  btn.addEventListener("click",()=>{const cur=document.documentElement.getAttribute("data-theme");
+    const pd=window.matchMedia("(prefers-color-scheme:dark)").matches;
+    const next=cur?(cur==="dark"?"light":"dark"):(pd?"light":"dark");
+    document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("mterm-theme",next);}catch(e){}});})();
+
+// boot
+log("EVerest–CitrineOS SIL 충전 콘솔 준비 완료.","ok");
+log("start 입력 시 충전 세션이 시작됩니다. help 로 명령 목록 확인.","dim");
+renderAll();
+$("cmd").focus();
+</script>
+
+</body>
+</html>
