@@ -189,6 +189,31 @@
     border-radius:9px;padding:9px 12px}
   .narr b{font-weight:600}
 
+  /* experiment control + records */
+  .exp-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .exp-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .exp-lbl{font-size:12px;color:var(--muted);font-weight:600;min-width:62px}
+  .exp-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .expbtn{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:9px;padding:8px 13px}
+  .expbtn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .expbtn.danger.on{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+  .exp-row input[type=number]{font:inherit;font-family:var(--mono);width:66px;padding:7px 9px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:8px}
+  .exp-unit{font-size:12px;color:var(--muted)}
+  .exp-tls{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);margin-left:auto;cursor:pointer;white-space:nowrap}
+  .exp-hint{font-size:12.5px;color:var(--muted)}
+  .exp-hint b{color:var(--ink)}
+  .rec-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .rec-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  table.rec{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+  table.rec th,table.rec td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.rec th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--panel-2);font-weight:600}
+  table.rec tr:last-child td{border-bottom:none}
+  table.rec .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .rec-empty{color:var(--muted);text-align:center!important;padding:20px!important}
+  .rtag{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .rtag.r-bad{color:var(--bad);background:var(--bad-soft)} .rtag.r-good{color:var(--good);background:var(--good-soft)} .rtag.r-ok{color:var(--muted);background:var(--panel-2)}
+  .rnote{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:normal!important;min-width:180px}
+
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
   .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
@@ -253,6 +278,21 @@
     </div>
   </div>
 
+  <div class="eyebrow">실험 제어 — 한 번에 한 지점만 변조</div>
+  <div class="exp-card">
+    <div class="exp-row">
+      <span class="exp-lbl">변조 지점</span>
+      <div class="exp-btns" id="expBtns"></div>
+    </div>
+    <div class="exp-row">
+      <span class="exp-lbl">축소 비율</span>
+      <input id="expPct" type="number" min="1" max="99" value="10">
+      <span class="exp-unit">% 만 보고</span>
+      <label class="exp-tls"><input type="checkbox" id="tlsChk"> OCPP TLS (보안프로파일 2/3)</label>
+    </div>
+    <div class="exp-hint" id="expHint"></div>
+  </div>
+
   <div class="eyebrow">계층별 에너지 흐름</div>
   <div class="pipe-card">
     <div class="pipe-scroll"><div class="pipe" id="pipe"></div></div>
@@ -285,12 +325,24 @@
     <div id="invFull" hidden></div>
   </div>
 
+  <div class="eyebrow">실험 기록 — M1~M4 비교</div>
+  <div class="rec-card">
+    <div class="rec-scroll">
+      <table class="rec">
+        <thead><tr><th>#</th><th>지점</th><th>실제 kWh</th><th>보고 kWh</th><th>청구</th><th>결과</th><th>탐지 경계 / 비고</th></tr></thead>
+        <tbody id="recBody"></tbody>
+      </table>
+    </div>
+    <button class="playbtn" id="recClear" type="button" style="margin-top:12px">기록 지우기</button>
+  </div>
+
   <div class="note">
-    <b>작동 순서(발표 권장).</b>
-    ① <code>inject off</code> 후 <code>start</code> → 정상 완충 → 실제 전량 청구 확인 ·
-    ② <code>reset</code> → <code>inject M4 10</code> → <code>start</code> → 완충 시 자동 종료, 흐름도가 M4에서 변조(실제의 10%만 보고)를 표시하고 청구서가 1/10 수준으로 발행 ·
-    ③ <code>▶ 흐름 재생</code> 으로 자동차→충전기→결제기 서사 반복 재생 ·
-    ④ <code>inject M1 10</code> / <code>M2</code> / <code>M3</code> 로 바꿔 탐지 경계가 어떻게 달라지는지 비교. 상단 <b>발표 결과 ↗</b> 는 M1~M4 종합 정리입니다.
+    <b>작동 순서(발표 권장).</b> <b>실험 제어</b> 패널에서 한 번에 한 지점만 고릅니다.
+    ① <b>정상</b> → <code>start</code> → 완충 → 실제 전량 청구 확인(기준) ·
+    ② <b>M1</b> 선택 → <code>reset</code> → <code>start</code> → 완충 시 자동 종료, 흐름도가 M1에서 변조를 표시하고 청구가 낮아짐. <b>실험 기록</b>에 한 줄 쌓임 ·
+    ③ 같은 식으로 <b>M2 · M3 · M4</b>를 하나씩 → 네 지점이 각각 독립 실행되고 아래 표에서 <b>탐지 경계</b>가 어떻게 다른지 비교 ·
+    ④ <b>OCPP TLS</b> 체크 후 <b>M2</b>를 다시 → 전송 암호화로 <b>차단</b>되어 정상 청구(현실 TLS 2/3 반영) ·
+    ⑤ <code>▶ 흐름 재생</code> 으로 자동차→충전기→결제기 서사 반복. 상단 <b>발표 결과 ↗</b> 는 종합 정리입니다.
     <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
     <b>동작.</b> <code>start</code> → SLAC·ISO 15118-2 TLS·PnC 계약 인증·전력 인출 순으로 진행되며 계량이 누적됩니다. 완충(SoC 100%) 또는 <code>stop</code> 시 거래가 종료되어 OCPP TransactionEvent → OCPI CDR → 청구서가 생성됩니다.
     <code>inject M1~M4 &lt;%&gt;</code> 로 특정 계층에서 실제의 N%만 보고하면(많이 충전·적게 청구) 청구서가 작아지고 어느 계층 대조에서 탐지되는지 표시됩니다. 금액 산식은 <code>billing/engine.py</code>와 동일(통화별 소수자리·ROUND_HALF_UP)하며 <code>SIMULATED_INVOICE_NOT_PAID</code> 모의 명세입니다. 실제 결제·물리 계량·계량 서명은 포함하지 않습니다.
@@ -327,14 +379,22 @@ function reset(full){
      delivered:0,amps:(full&&S.amps)||16,phases:(full&&S.phases)||3,voltage:230,
      rate:(full&&S.rate)||0.30,currency:(full&&S.currency)||"USD",
      inject:(full&&S.inject)||{point:null,pct:null},
+     tls:(full&&S.tls)||false,
      simSec:0,sessionId:null,startedAt:null,endedAt:null,lastMeterLog:0,busy:false};
 }
 reset(false);
 
 function powerKw(){return S.amps*S.phases*S.voltage/1000;}
 function socPct(){return Math.min(100,S.soc0 + (S.delivered/S.capacity)*100);}
+// TLS (OCPP security profile 2/3) encrypts the backhaul, so an M2 transport MITM is blocked.
+function injectionActive(){
+  if(S.inject.point==null) return false;
+  if(S.inject.point==="M2" && S.tls) return false;
+  return true;
+}
+function effInj(){return injectionActive()?INJECT_IDX[S.inject.point]:null;}
 // Manipulation = under-report a fraction of the actual energy, so it always lowers the bill.
-function reportedEnergy(trueE){return S.inject.point!=null?trueE*S.inject.pct/100:trueE;}
+function reportedEnergy(trueE){return injectionActive()?trueE*S.inject.pct/100:trueE;}
 function hms(sec){sec=Math.floor(sec);const h=String(Math.floor(sec/3600)).padStart(2,"0");
   const m=String(Math.floor(sec%3600/60)).padStart(2,"0");const s=String(sec%60).padStart(2,"0");return `${h}:${m}:${s}`;}
 function roundHalfUp(x,d){const f=Math.pow(10,d);return (Math.sign(x)*Math.floor(Math.abs(x)*f+0.5))/f;}
@@ -390,11 +450,15 @@ function finalize(reason){
   log(`OCPI CDR 생성 · session_id=${S.sessionId} · total_energy=${fmtE(rep)} kWh`,"evt");
   const d=CUR_DIGITS[S.currency];
   const amt=roundHalfUp(rep*S.rate,d);
-  log(`Billing: INVOICED · ${fmtMoney(amt,S.currency)} ${S.currency} · status=SIMULATED_INVOICE_NOT_PAID`, S.inject.point?"warn":"ok");
-  if(S.inject.point){
+  const active=injectionActive(); const blocked=(S.inject.point==="M2"&&S.tls);
+  log(`Billing: INVOICED · ${fmtMoney(amt,S.currency)} ${S.currency} · status=SIMULATED_INVOICE_NOT_PAID`, active?"warn":"ok");
+  if(active){
     const tA=roundHalfUp(S.delivered*S.rate,d);
-    log(`⚠ 변조 탐지: ${S.inject.point} — 참 ${fmtMoney(tA,S.currency)} vs 청구 ${fmtMoney(amt,S.currency)} ${S.currency} · 경계 [${BOUNDARY[INJECT_IDX[S.inject.point]-1]}]`,"err");
+    log(`⚠ 변조 통과: ${S.inject.point} — 참 ${fmtMoney(tA,S.currency)} vs 청구 ${fmtMoney(amt,S.currency)} ${S.currency} · 경계 [${BOUNDARY[INJECT_IDX[S.inject.point]-1]}]`,"err");
+  } else if(blocked){
+    log("✓ M2 변조 차단 — OCPP TLS(보안프로파일 2/3) 전송 암호화. 정상 청구.","ok");
   }
+  addRecord(S.delivered, rep, amt, active, blocked);
   renderAll();
   playFlow();
 }
@@ -455,12 +519,12 @@ function renderMetrics(){
 }
 function stageVal(i){
   // live true delivered everywhere until injection known; injected stages (>=idx) show reported value
-  const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
+  const inj=effInj();
   if(inj==null) return S.delivered;
   return i>=inj ? reportedEnergy(S.delivered) : S.delivered;
 }
 function renderPipeline(){
-  const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
+  const inj=effInj();
   const d=CUR_DIGITS[S.currency];
   const pipe=$("pipe");pipe.innerHTML="";
   STAGES.forEach((s,i)=>{
@@ -511,7 +575,34 @@ function renderInvoice(){
   }
   full.innerHTML=html;
 }
-function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();}
+function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();}
+
+// ---- experiment control (one point per run) + accumulated records ----
+const EXP=[{k:"off",label:"정상"},{k:"M1",label:"M1 계량"},{k:"M2",label:"M2 OCPP"},{k:"M3",label:"M3 CSMS"},{k:"M4",label:"M4 CDR"}];
+let records=[];
+function renderExpBtns(){
+  const cur=S.inject.point||"off";
+  $("expBtns").innerHTML=EXP.map(e=>`<button type="button" class="expbtn${e.k===cur?' on':''}${e.k!=='off'?' danger':''}" data-k="${e.k}">${e.label}</button>`).join("");
+  $("tlsChk").checked=S.tls;
+  const blocked=(S.inject.point==="M2"&&S.tls);
+  $("expHint").innerHTML = blocked
+    ? `<b style="color:var(--good)">M2 선택 + TLS 켜짐 → 전송 변조 차단</b>. start 하면 정상 청구가 나옵니다(현실의 TLS 2/3 반영).`
+    : `지점을 고르고 <b>start</b> → 완충 시 청구서와 아래 <b>실험 기록</b>에 한 줄이 쌓입니다. M1~M4를 하나씩 돌려 비교하세요.`;
+}
+function addRecord(trueE, rep, bill, active, blocked){
+  records.push({ n:records.length+1, point:S.inject.point||"정상", trueE, rep, bill, cur:S.currency,
+    result: S.inject.point ? (blocked?"차단(TLS)":"변조 통과") : "정상",
+    note: S.inject.point ? (blocked?"OCPP TLS 전송 암호화로 중간자 차단":BOUNDARY[INJECT_IDX[S.inject.point]-1]) : "—" });
+  renderRecords();
+}
+function renderRecords(){
+  const b=$("recBody");
+  if(records.length===0){b.innerHTML=`<tr><td colspan="7" class="rec-empty">아직 기록 없음 — 변조 지점 선택 후 start</td></tr>`;return;}
+  b.innerHTML=records.map(r=>{
+    const cls=r.result==="변조 통과"?"r-bad":(r.result==="차단(TLS)"?"r-good":"r-ok");
+    return `<tr><td>${r.n}</td><td><b>${r.point}</b></td><td class="num">${fmtE(r.trueE)}</td><td class="num">${fmtE(r.rep)}</td><td class="num">${fmtMoney(r.bill,r.cur)} ${r.cur}</td><td><span class="rtag ${cls}">${r.result}</span></td><td class="rnote">${r.note}</td></tr>`;
+  }).join("");
+}
 
 // ---- presentation scene (car -> charger -> payment) ----
 const MX={1:50,2:62,3:69,4:80};       // M-point x position (%) along the scene
@@ -520,9 +611,9 @@ let flowRAF=null;
 function sceneData(){
   const target=(100-S.soc0)/100*S.capacity;
   const trueE=S.delivered>0.0001?S.delivered:(target>0?target:48);
-  const inj=S.inject.point?INJECT_IDX[S.inject.point]:null;
+  const inj=effInj();
   const reported=reportedEnergy(trueE);
-  return {trueE,reported,inj,point:S.inject.point};
+  return {trueE,reported,inj,point:S.inject.point,blocked:(S.inject.point==="M2"&&S.tls)};
 }
 function renderMmarks(active){
   const names={1:"M1 계량",2:"M2 OCPP",3:"M3 CSMS",4:"M4 CDR"};
@@ -537,7 +628,7 @@ function renderScene(){
   renderMmarks(inj);
 }
 function playFlow(){
-  const {trueE,reported,inj,point}=sceneData();
+  const {trueE,reported,inj,point,blocked}=sceneData();
   const d=CUR_DIGITS[S.currency];
   const trueA=roundHalfUp(trueE*S.rate,d), billA=roundHalfUp(reported*S.rate,d), loss=roundHalfUp((trueE-reported)*S.rate,d);
   const token=$("token"),burst=$("burst");
@@ -566,7 +657,8 @@ function playFlow(){
       $("aPay").classList.add(point?"hot":"done"); $("payV").textContent=`${fmtMoney(billA,S.currency)} ${S.currency}`;}
     if(p>=1){
       token.style.left=SX1+"%";
-      if(point)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 실제 ${fmtE(trueE)} kWh(${fmtMoney(trueA,S.currency)} ${S.currency}) 충전했지만 <b>${point}</b> 변조로 <b>${fmtMoney(loss,S.currency)} ${S.currency}</b> 미청구. 값싸게 충전 성립.`;
+      if(inj)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 실제 ${fmtE(trueE)} kWh(${fmtMoney(trueA,S.currency)} ${S.currency}) 충전했지만 <b>${point}</b> 변조로 <b>${fmtMoney(loss,S.currency)} ${S.currency}</b> 미청구. 값싸게 충전 성립.`;
+      else if(blocked)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> — <b>M2</b> 변조 시도했으나 <b>OCPP TLS(보안프로파일 2/3)</b>로 전송이 암호화되어 중간자 변조 <b>차단</b>. 정상 청구.`;
       else $("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 변조 없음(정상). 실제 ${fmtE(trueE)} kWh 전량 청구.`;
       flowRAF=null; return;
     }
@@ -621,7 +713,8 @@ function runCmd(raw){
     else if(k==="soc"){const n=parseFloat(v);if(!(n>=0&&n<100))return log("soc 0~99","err");S.soc0=n;}
     else if(k==="amps"){const n=parseFloat(v);if(!(n>0))return log("amps 양수","err");S.amps=n;}
     else if(k==="phases"){const n=parseInt(v);if(!(n===1||n===3))return log("phases 1 또는 3","err");S.phases=n;}
-    else return log("set rate|currency|capacity|soc|amps|phases <값>","err");
+    else if(k==="tls"){const on=(v||"").toLowerCase();if(on!=="on"&&on!=="off")return log("set tls on|off","err");S.tls=(on==="on");}
+    else return log("set rate|currency|capacity|soc|amps|phases|tls <값>","err");
     renderAll();log(`설정 적용: ${k}=${v}`,"ok");return;
   }
   log(`알 수 없는 명령: ${c} — help 참고`,"err");
@@ -641,6 +734,15 @@ const CHIPS=["start","stop","inject M4 10","inject M1 10","inject off","flow","s
 $("chips").innerHTML=CHIPS.map(c=>`<button type="button" class="chip" data-c="${c}">${c}</button>`).join("");
 $("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;runCmd(b.dataset.c);$("cmd").focus();});
 $("playBtn").addEventListener("click",playFlow);
+$("expBtns").addEventListener("click",e=>{const btn=e.target.closest(".expbtn");if(!btn)return;
+  const k=btn.dataset.k; const pct=Math.min(99,Math.max(1,parseFloat($("expPct").value)||10));
+  if(k==="off"){S.inject={point:null,pct:null};log("정상(변조 없음) 선택.","ok");}
+  else{S.inject={point:k,pct:pct};log(`${k} 변조 선택: 실제의 ${pct}%만 보고${(k==="M2"&&S.tls)?" — 단 OCPP TLS로 차단됨":""}.`,"warn");}
+  renderAll();});
+$("tlsChk").addEventListener("change",()=>{S.tls=$("tlsChk").checked;
+  log(`OCPP 보안 프로파일: ${S.tls?"2/3 (TLS·전송 암호화)":"0/1 (평문 ws://)"}.`,"dim");renderAll();});
+$("expPct").addEventListener("input",()=>{if(S.inject.point){S.inject.pct=Math.min(99,Math.max(1,parseFloat($("expPct").value)||10));renderAll();}});
+$("recClear").addEventListener("click",()=>{records=[];renderRecords();log("실험 기록 삭제.","dim");});
 
 // theme
 (function(){const btn=$("themeBtn");let t=null;try{t=localStorage.getItem("mterm-theme");}catch(e){}
