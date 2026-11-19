@@ -436,7 +436,7 @@
     <button class="playbtn" id="recClear" type="button" style="margin-top:12px">기록 지우기</button>
   </div>
 
-  <div class="eyebrow">라이브 스택 실측 — 감사 증거 (시뮬레이션 아님)</div>
+  <div class="eyebrow">라이브 스택 실측 — 감사 증거 · M4(코드)+M2(네트워크) (시뮬레이션 아님)</div>
   <div class="audit-card">
     <span class="audit-badge"><span class="b"></span>LIVE · 실행·기록됨 2026-11-19 · 재현 가능</span>
     <p class="audit-lead">아래 수치는 이 대시보드가 계산한 값이 <b>아니라</b>, 실행 중인 CitrineOS 스택의 <b>PostgreSQL·OCPI에서 실제로 조회</b>한 값입니다. M4 변조(코드 한 줄)를 실제로 가하고 EVerest 충전 세션을 돌린 뒤 수집했으며, 실험 후 원복했습니다. vendor 커밋 <span class="mono">4fd7599</span> 고정 유지, 보안옵션 미변경(PnC 체인 검증 ON).</p>
@@ -461,7 +461,21 @@
 <span class="c"># 3) 실세션:</span> bash scripts/clean_everest.sh start-session  →  stop-session
 <span class="c"># 4) 서버 집계값 조회:</span> docker exec ...ocpp-db-1 psql -U citrine -d citrine \
      -c "SELECT \"totalKwh\" FROM \"Transactions\" WHERE \"transactionId\"='cd4d...'"</div>
-    <p class="audit-note">→ 위 흐름도·청구서(시뮬레이션)와 <b>같은 10:1 비율</b>이 <b>실제 스택</b>에서 재현됨을 뜻합니다. 숫자가 임의로 만들어진 게 아니라, 변조 코드 한 줄이 서버·OCPI·청구서로 전파된 결과입니다.</p>
+    <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+    <span class="audit-badge"><span class="b"></span>LIVE · M2 네트워크 중간자 · 2026-11-19 · 재현 가능</span>
+    <p class="audit-lead">평문 <span class="mono">ws://</span> OCPP 링크를 <b>중간자 프록시</b>(Node/ws)로 가로채 전송 중 <span class="mono">meterValue</span>를 ×0.1로 변조했습니다. <b>백엔드(CitrineOS·Billing) 코드는 전혀 바꾸지 않았습니다</b> — 운전자+네트워크 장치만으로 가능한 공격입니다.</p>
+    <div class="audit-meta">거래: fd793b9e-91ee-46f0-8575-91ceb26ef40f · 프록시 로그: [MITM] rewrote meterValue x0.1 ev=Ended · 재현: diagnostics/live-m2-*/mitm_up.sh</div>
+    <div class="rec-scroll" style="margin-top:12px">
+      <table class="rec">
+        <thead><tr><th>조회 경로 (출처)</th><th>값</th><th>의미</th></tr></thead>
+        <tbody>
+          <tr><td>EVerest 계량 telemetry · <span class="rnote">powermeter.totalKWattHr</span></td><td class="num" style="color:var(--true);font-weight:700">0.118 kWh</td><td>충전기가 실제 전달한 참값</td></tr>
+          <tr><td>CitrineOS Postgres · <span class="rnote">Transactions.totalKwh</span></td><td class="num" style="color:var(--bad);font-weight:700">0.0118 kWh</td><td>중간자가 변조해 서버가 저장한 값</td></tr>
+          <tr><td>대조 · <span class="rnote">실측 ÷ 저장</span></td><td class="num" style="font-weight:700">10.0×</td><td>네트워크 변조 배율 그대로 전파</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="audit-note">→ <b>두 가지가 실제 스택에서 라이브로 입증</b>되었습니다: <b>M4</b>(백엔드 코드 변조, 운영자/공급망 위협)와 <b>M2</b>(네트워크 패킷 변조, 운전자+장치 위협). 둘 다 계량값이 서버·OCPI·청구서로 그대로 전파되어 청구가 1/10로 떨어졌습니다. 숫자는 임의값이 아니라 실제 DB·계량 telemetry 조회 결과입니다.</p>
   </div>
 
   <div class="note">
@@ -746,7 +760,7 @@ const POINT_SRC={
       desc:"충전기가 계량값을 '생성'하는 지점. 여기서 낮추면 OCPP·DB·CDR·청구서가 서로 완전히 일치한 채로 낮아져, 계층 간 교차대조로도 탐지되지 않는다(가장 위험)."},
   M2:{proj:"OCPP 2.0.1 전송 구간 (EVerest → CitrineOS) — 코드 파일이 아닌 '와이어'",
       file:"TransactionEventRequest.meterValue[].sampledValue[]  (measurand = Energy.Active.Import.Register)",
-      verify:"citrineos 소스 변경 없음 — 중간 proxy 구현 필요(현재 미구현). 백홀이 평문 ws:// 라 가능하며, OCPP TLS(프로파일 2/3)면 차단.",
+      verify:"라이브 실증 완료 — Node/ws 중간자 프록시로 OCPP meterValue를 ×0.1 변조: EVerest 실측 0.118 ↔ CitrineOS 저장 0.0118 kWh(10×), 백엔드 코드 미변경. 평문 ws:// 라 가능, OCPP TLS(프로파일 2/3)면 차단. (diagnostics/live-m2-*)",
       orig:['{ "measurand": "Energy.Active.Import.Register",',
             '  "value": 48.0,                 // ← 전송되는 계량 샘플값',
             '  "unitOfMeasure": { "unit": "kWh" } }'], hl:1,
