@@ -230,6 +230,37 @@
   .audit-note{font-size:12.5px;color:var(--muted);margin-top:12px}
   .sil-tag{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);border-radius:5px;padding:1px 7px;margin-left:8px;vertical-align:middle}
 
+  /* two-column: main + sticky live-propagation rail */
+  .wrap{display:flex;gap:20px;align-items:flex-start}
+  .main{flex:1;min-width:0}
+  .rail{width:344px;flex:none;position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);max-height:calc(100vh - 86px);overflow:auto}
+  @media(max-width:1080px){.wrap{flex-direction:column}.rail{width:100%;position:static;max-height:none}}
+  .rail-inner{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .rail-title{font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+  .rail-sub{font-size:11px;color:var(--muted);font-weight:500}
+  .rnode{border:1px solid var(--line);border-radius:11px;background:var(--panel-2);padding:9px 11px;display:flex;flex-direction:column;gap:3px;transition:border-color .2s,box-shadow .2s,background .2s}
+  .rnode.car{background:color-mix(in srgb,var(--true) 12%,var(--panel-2))}
+  .rnode.bill{background:color-mix(in srgb,var(--accent) 10%,var(--panel-2))}
+  .rn-top{display:flex;align-items:center;gap:7px}
+  .rn-ico{font-size:16px;line-height:1}
+  .rn-name{font-size:12.5px;font-weight:600}
+  .rn-m{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-left:auto}
+  .rn-code{font-family:var(--mono);font-size:10px;color:var(--muted);word-break:break-all}
+  .rn-val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;font-weight:600;color:var(--true)}
+  .rn-val.big{font-size:23px;color:var(--accent)}
+  .rnode.manip{border-color:var(--bad);background:var(--bad-soft)}
+  .rnode.manip .rn-val{color:var(--bad)}
+  .rnode.manip .rn-m{border-color:var(--bad);color:var(--bad)}
+  .rnode.injected{box-shadow:0 0 0 2px var(--bad)}
+  .rnode.blocked{border-color:var(--good);background:var(--good-soft)}
+  .rnode.blocked .rn-val{color:var(--good)}
+  .rbadge{font-family:var(--mono);font-size:10px;font-weight:700;border-radius:5px}
+  .rbadge.on{color:#fff;background:var(--bad);padding:1px 6px;animation:pulse 1s infinite}
+  .rbadge.blk{color:#fff;background:var(--good);padding:1px 6px}
+  .rconn{height:16px;display:flex;align-items:center;justify-content:center;color:var(--line);font-size:11px}
+  .rconn.flow span{color:var(--energy)}
+  .rconn.manip span{color:var(--bad);font-weight:700}
+
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
   .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
@@ -249,6 +280,7 @@
 </header>
 
 <div class="wrap">
+  <div class="main">
   <div class="grid">
     <!-- terminal -->
     <div>
@@ -392,6 +424,46 @@
     <b>동작.</b> <code>start</code> → SLAC·ISO 15118-2 TLS·PnC 계약 인증·전력 인출 순으로 진행되며 계량이 누적됩니다. 완충(SoC 100%) 또는 <code>stop</code> 시 거래가 종료되어 OCPP TransactionEvent → OCPI CDR → 청구서가 생성됩니다.
     <code>inject M1~M4 &lt;%&gt;</code> 로 특정 계층에서 실제의 N%만 보고하면(많이 충전·적게 청구) 청구서가 작아지고 어느 계층 대조에서 탐지되는지 표시됩니다. 금액 산식은 <code>billing/engine.py</code>와 동일(통화별 소수자리·ROUND_HALF_UP)하며 <code>SIMULATED_INVOICE_NOT_PAID</code> 모의 명세입니다. 실제 결제·물리 계량·계량 서명은 포함하지 않습니다.
   </div>
+  </div><!-- /main -->
+  <aside class="rail">
+    <div class="rail-inner">
+      <div class="rail-title">실시간 변조 전파<span class="rail-sub">충전량 → 전송 → 서버 → 청구서 (라이브)</span></div>
+      <div class="rnode car" id="rn-car">
+        <div class="rn-top"><span class="rn-ico">🚗</span><span class="rn-name">자동차 (EV)</span></div>
+        <div class="rn-val" id="rv-car">목표 48 kWh</div>
+      </div>
+      <div class="rconn" id="rc-0"><span>▼</span></div>
+      <div class="rnode" id="rn-meter">
+        <div class="rn-top"><span class="rn-ico">⚡</span><span class="rn-name">EVerest 계량</span><span class="rn-m">M1</span><span class="rbadge" id="rb-meter"></span></div>
+        <div class="rn-code">YetiSimulator · powermeter</div>
+        <div class="rn-val" id="rv-meter">— kWh</div>
+      </div>
+      <div class="rconn" id="rc-1"><span>▼</span></div>
+      <div class="rnode" id="rn-ocpp">
+        <div class="rn-top"><span class="rn-ico">📡</span><span class="rn-name">OCPP 전송</span><span class="rn-m">M2</span><span class="rbadge" id="rb-ocpp"></span></div>
+        <div class="rn-code">TransactionEvent · meterValue</div>
+        <div class="rn-val" id="rv-ocpp">— kWh</div>
+      </div>
+      <div class="rconn" id="rc-2"><span>▼</span></div>
+      <div class="rnode" id="rn-csms">
+        <div class="rn-top"><span class="rn-ico">🗄️</span><span class="rn-name">CitrineOS DB</span><span class="rn-m">M3</span><span class="rbadge" id="rb-csms"></span></div>
+        <div class="rn-code">getTotalKwh()</div>
+        <div class="rn-val" id="rv-csms">— kWh</div>
+      </div>
+      <div class="rconn" id="rc-3"><span>▼</span></div>
+      <div class="rnode" id="rn-cdr">
+        <div class="rn-top"><span class="rn-ico">🧾</span><span class="rn-name">OCPI CDR</span><span class="rn-m">M4</span><span class="rbadge" id="rb-cdr"></span></div>
+        <div class="rn-code">cdr-mapper.ts:129 total_energy</div>
+        <div class="rn-val" id="rv-cdr">— kWh</div>
+      </div>
+      <div class="rconn" id="rc-4"><span>▼</span></div>
+      <div class="rnode bill" id="rn-bill">
+        <div class="rn-top"><span class="rn-ico">💳</span><span class="rn-name">청구서</span></div>
+        <div class="rn-val big" id="rv-bill">$—</div>
+        <div class="rn-code" id="rv-billsub">energy × rate</div>
+      </div>
+    </div>
+  </aside>
 </div>
 
 <script>
@@ -534,7 +606,7 @@ function tick(ts){
     S.lastMeterLog=S.simSec;
     log(`meterValue — ${fmtE(S.delivered)} kWh @ ${hms(S.simSec)} · SoC ${socPct().toFixed(1)}%`,"dim");
   }
-  renderMetrics(); renderPipeline();
+  renderMetrics(); renderPipeline(); renderRail();
   if(S.delivered>=maxDeliver-1e-9){ renderMetrics(); finalize("배터리 완충 (SoC 100%) → 세션 자동 종료"); return; }
   rafId=requestAnimationFrame(tick);
 }
@@ -622,7 +694,37 @@ function renderInvoice(){
   }
   full.innerHTML=html;
 }
-function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();}
+function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();renderRail();}
+
+// ---- sticky live-propagation rail (always visible) ----
+function renderRail(){
+  const inj=effInj();
+  const d=CUR_DIGITS[S.currency];
+  const target=(100-S.soc0)/100*S.capacity;
+  $("rv-car").textContent = (S.phase==="idle" ? "목표 "+fmtE(target>0?target:48) : fmtE(S.delivered))+" kWh";
+  [["meter",1],["ocpp",2],["csms",3],["cdr",4]].forEach(([key,idx])=>{
+    const v=stageVal(idx);
+    $("rv-"+key).textContent=fmtE(v)+" kWh";
+    const el=$("rn-"+key), badge=$("rb-"+key);
+    const blockedHere=(key==="ocpp" && S.inject.point==="M2" && S.tls);
+    const manip = inj!=null && idx>=inj;
+    const injected = inj!=null && idx===inj;
+    el.classList.toggle("manip", manip);
+    el.classList.toggle("injected", injected);
+    el.classList.toggle("blocked", blockedHere);
+    badge.className="rbadge"+(injected?" on":(blockedHere?" blk":""));
+    badge.textContent = injected ? "변조!" : (blockedHere ? "🔒 차단" : "");
+  });
+  for(let i=0;i<5;i++){
+    const c=$("rc-"+i); if(!c)continue;
+    const crossing = inj!=null && i===(inj-1);
+    c.className="rconn"+(crossing?" manip":(S.phase==="charging"?" flow":""));
+  }
+  const billE=stageVal(5), amt=roundHalfUp(billE*S.rate,d);
+  $("rv-bill").textContent=fmtMoney(amt,S.currency)+" "+S.currency;
+  $("rn-bill").classList.toggle("manip", inj!=null);
+  $("rv-billsub").textContent=fmtE(billE)+" kWh × "+S.rate.toFixed(2);
+}
 
 // ---- experiment control (one point per run) + accumulated records ----
 const EXP=[{k:"off",label:"정상"},{k:"M1",label:"M1 계량"},{k:"M2",label:"M2 OCPP"},{k:"M3",label:"M3 CSMS"},{k:"M4",label:"M4 CDR"}];
