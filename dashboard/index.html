@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
-  /* standalone base reset (replicates the claude.ai artifact host skeleton) */
+  /* standalone base reset */
   :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
   html,body{margin:0}
   body{background:#f6f7f9;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -260,6 +260,27 @@
   .rconn{height:16px;display:flex;align-items:center;justify-content:center;color:var(--line);font-size:11px}
   .rconn.flow span{color:var(--energy)}
   .rconn.manip span{color:var(--bad);font-weight:700}
+  /* injection-detail panel */
+  .rd-point{font-size:14.5px;font-weight:700;padding:9px 10px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);text-align:center}
+  .rd-point.bad{color:var(--bad);background:var(--bad-soft);border-color:var(--bad)}
+  .rd-point.good{color:var(--good);background:var(--good-soft);border-color:var(--good)}
+  .rd-sec{margin-top:13px}
+  .rd-label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:5px}
+  .rd-where{font-family:var(--mono);font-size:12px;color:var(--ink);word-break:break-all}
+  .rd-code{font-family:var(--mono);font-size:11.5px;background:var(--term-bg);border-radius:8px;padding:10px 11px;line-height:1.55}
+  .rd-code .del{color:#ff8178;display:block;white-space:pre-wrap;word-break:break-all}
+  .rd-code .add{color:#5fd39a;display:block;white-space:pre-wrap;word-break:break-all}
+  .rd-code .cmt{color:var(--term-dim);display:block;white-space:pre-wrap}
+  .rd-live{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px}
+  .rd-cell{flex:1;display:flex;flex-direction:column;gap:2px;text-align:center;min-width:0}
+  .rd-cell span{font-size:10px;color:var(--muted)}
+  .rd-cell b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;color:var(--true)}
+  .rd-cell b.bad{color:var(--bad)} .rd-cell b.good{color:var(--good)}
+  .rd-arrow{font-size:16px;color:var(--muted);flex:none;font-family:var(--mono)}
+  .rd-bill{margin-top:14px;text-align:center;border-top:1px solid var(--line);padding-top:13px}
+  .rd-amt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:29px;font-weight:700;color:var(--accent);line-height:1.1}
+  .rd-amt.bad{color:var(--bad)}
+  .rd-amtsub{font-size:11.5px;color:var(--muted);margin-top:4px}
 
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
@@ -426,41 +447,29 @@
   </div>
   </div><!-- /main -->
   <aside class="rail">
+    <div class="eyebrow" style="margin:0 0 10px">실시간 변조 전파</div>
     <div class="rail-inner">
-      <div class="rail-title">실시간 변조 전파<span class="rail-sub">충전량 → 전송 → 서버 → 청구서 (라이브)</span></div>
-      <div class="rnode car" id="rn-car">
-        <div class="rn-top"><span class="rn-ico">🚗</span><span class="rn-name">자동차 (EV)</span></div>
-        <div class="rn-val" id="rv-car">목표 48 kWh</div>
+      <div class="rd-point" id="rd-point">정상 — 변조 없음</div>
+      <div class="rd-sec">
+        <div class="rd-label">변조 위치 — 어디를</div>
+        <div class="rd-where" id="rd-where">변조 없음 · 전 구간 참값 전달</div>
       </div>
-      <div class="rconn" id="rc-0"><span>▼</span></div>
-      <div class="rnode" id="rn-meter">
-        <div class="rn-top"><span class="rn-ico">⚡</span><span class="rn-name">EVerest 계량</span><span class="rn-m">M1</span><span class="rbadge" id="rb-meter"></span></div>
-        <div class="rn-code">YetiSimulator · powermeter</div>
-        <div class="rn-val" id="rv-meter">— kWh</div>
+      <div class="rd-sec">
+        <div class="rd-label">변조 내용 — 어떻게 (코드)</div>
+        <div class="rd-code" id="rd-code"><span class="cmt">변조 코드 없음 (원본 그대로)</span></div>
       </div>
-      <div class="rconn" id="rc-1"><span>▼</span></div>
-      <div class="rnode" id="rn-ocpp">
-        <div class="rn-top"><span class="rn-ico">📡</span><span class="rn-name">OCPP 전송</span><span class="rn-m">M2</span><span class="rbadge" id="rb-ocpp"></span></div>
-        <div class="rn-code">TransactionEvent · meterValue</div>
-        <div class="rn-val" id="rv-ocpp">— kWh</div>
+      <div class="rd-sec">
+        <div class="rd-label">실시간 값 — 충전 중</div>
+        <div class="rd-live">
+          <div class="rd-cell"><span>실측(참)</span><b id="rd-true">0 kWh</b></div>
+          <div class="rd-arrow" id="rd-arrow">=</div>
+          <div class="rd-cell"><span>보고(변조)</span><b id="rd-rep">0 kWh</b></div>
+        </div>
       </div>
-      <div class="rconn" id="rc-2"><span>▼</span></div>
-      <div class="rnode" id="rn-csms">
-        <div class="rn-top"><span class="rn-ico">🗄️</span><span class="rn-name">CitrineOS DB</span><span class="rn-m">M3</span><span class="rbadge" id="rb-csms"></span></div>
-        <div class="rn-code">getTotalKwh()</div>
-        <div class="rn-val" id="rv-csms">— kWh</div>
-      </div>
-      <div class="rconn" id="rc-3"><span>▼</span></div>
-      <div class="rnode" id="rn-cdr">
-        <div class="rn-top"><span class="rn-ico">🧾</span><span class="rn-name">OCPI CDR</span><span class="rn-m">M4</span><span class="rbadge" id="rb-cdr"></span></div>
-        <div class="rn-code">cdr-mapper.ts:129 total_energy</div>
-        <div class="rn-val" id="rv-cdr">— kWh</div>
-      </div>
-      <div class="rconn" id="rc-4"><span>▼</span></div>
-      <div class="rnode bill" id="rn-bill">
-        <div class="rn-top"><span class="rn-ico">💳</span><span class="rn-name">청구서</span></div>
-        <div class="rn-val big" id="rv-bill">$—</div>
-        <div class="rn-code" id="rv-billsub">energy × rate</div>
+      <div class="rd-bill">
+        <div class="rd-label">청구서</div>
+        <div class="rd-amt" id="rd-amt">0.00 USD</div>
+        <div class="rd-amtsub" id="rd-amtsub">전량 청구</div>
       </div>
     </div>
   </aside>
@@ -696,34 +705,42 @@ function renderInvoice(){
 }
 function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();renderRail();}
 
-// ---- sticky live-propagation rail (always visible) ----
+// ---- live injection-detail rail: where/how tampered + live 실측→보고 + invoice ----
+const POINT_DETAIL={
+  M1:{title:"M1 · 계량 생성 조작", where:"EVerest YetiSimulator · powermeter",
+      code:[["- publish energy_Wh.total = measured","del"],["+ publish energy_Wh.total = measured * {f}","add"]]},
+  M2:{title:"M2 · OCPP 전송 조작", where:"OCPP WebSocket proxy (EVerest ↔ CSMS)",
+      code:[["- sampledValue.value = <measured>","del"],["+ sampledValue.value = <measured> * {f}","add"]]},
+  M3:{title:"M3 · CSMS 처리·저장 조작", where:"citrineos-core · meter-value-utils.ts  getTotalKwh()",
+      code:[["- return last - meterStart","del"],["+ return (last - meterStart) * {f}","add"]]},
+  M4:{title:"M4 · CDR 변환 조작", where:"citrineos-core · ocpi/cdr-mapper.ts:129",
+      code:[["- total_energy: session.kwh,","del"],["+ total_energy: session.kwh * {f},","add"]]},
+};
 function renderRail(){
-  const inj=effInj();
   const d=CUR_DIGITS[S.currency];
-  const target=(100-S.soc0)/100*S.capacity;
-  $("rv-car").textContent = (S.phase==="idle" ? "목표 "+fmtE(target>0?target:48) : fmtE(S.delivered))+" kWh";
-  [["meter",1],["ocpp",2],["csms",3],["cdr",4]].forEach(([key,idx])=>{
-    const v=stageVal(idx);
-    $("rv-"+key).textContent=fmtE(v)+" kWh";
-    const el=$("rn-"+key), badge=$("rb-"+key);
-    const blockedHere=(key==="ocpp" && S.inject.point==="M2" && S.tls);
-    const manip = inj!=null && idx>=inj;
-    const injected = inj!=null && idx===inj;
-    el.classList.toggle("manip", manip);
-    el.classList.toggle("injected", injected);
-    el.classList.toggle("blocked", blockedHere);
-    badge.className="rbadge"+(injected?" on":(blockedHere?" blk":""));
-    badge.textContent = injected ? "변조!" : (blockedHere ? "🔒 차단" : "");
-  });
-  for(let i=0;i<5;i++){
-    const c=$("rc-"+i); if(!c)continue;
-    const crossing = inj!=null && i===(inj-1);
-    c.className="rconn"+(crossing?" manip":(S.phase==="charging"?" flow":""));
+  const pt=S.inject.point, blocked=(pt==="M2"&&S.tls), active=injectionActive();
+  const trueE=S.delivered, rep=reportedEnergy(S.delivered), f=((S.inject.pct||10)/100);
+  const det=pt?POINT_DETAIL[pt]:null;
+  $("rd-point").textContent = det ? det.title + (blocked?"  ·  🔒 TLS 차단":"") : "정상 — 변조 없음";
+  $("rd-point").className = "rd-point"+(active?" bad":(blocked?" good":""));
+  $("rd-where").textContent = det ? det.where : "변조 없음 · 전 구간 참값 전달";
+  if(det && !blocked){
+    $("rd-code").innerHTML = det.code.map(([t,c])=>`<span class="${c}">${esc(t.replace("{f}", f))}</span>`).join("");
+  } else if(blocked){
+    $("rd-code").innerHTML = '<span class="cmt">// OCPP TLS(보안프로파일 2/3) 전송 암호화</span><span class="cmt">// → 중간자 변조 무효, 보고 = 실측</span>';
+  } else {
+    $("rd-code").innerHTML = '<span class="cmt">변조 코드 없음 (원본 그대로)</span>';
   }
-  const billE=stageVal(5), amt=roundHalfUp(billE*S.rate,d);
-  $("rv-bill").textContent=fmtMoney(amt,S.currency)+" "+S.currency;
-  $("rn-bill").classList.toggle("manip", inj!=null);
-  $("rv-billsub").textContent=fmtE(billE)+" kWh × "+S.rate.toFixed(2);
+  $("rd-true").textContent = fmtE(trueE)+" kWh";
+  $("rd-rep").textContent = fmtE(rep)+" kWh";
+  $("rd-rep").className = active?"bad":"good";
+  $("rd-arrow").textContent = active?"→":"=";
+  const amt=roundHalfUp(rep*S.rate,d), norm=roundHalfUp(trueE*S.rate,d);
+  $("rd-amt").textContent = fmtMoney(amt,S.currency)+" "+S.currency;
+  $("rd-amt").className = "rd-amt"+(active?" bad":"");
+  $("rd-amtsub").textContent = active
+    ? `정상 ${fmtMoney(norm,S.currency)} ${S.currency} 대비 ${trueE>0?Math.round(amt/norm*100):100}%`
+    : (blocked ? "TLS 차단 → 전량 청구" : "전량 청구");
 }
 
 // ---- experiment control (one point per run) + accumulated records ----
