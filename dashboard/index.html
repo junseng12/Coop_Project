@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
-  /* standalone base reset */
   :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
   html,body{margin:0}
   body{background:#f6f7f9;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -282,6 +281,22 @@
   .rd-amt.bad{color:var(--bad)}
   .rd-amtsub{font-size:11.5px;color:var(--muted);margin-top:4px}
 
+  /* detailed source-evidence section */
+  .detail-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .dz-head{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}
+  .dz-proj{font-size:13.5px;font-weight:600}
+  .dz-file{font-family:var(--mono);font-size:12px;color:var(--muted);word-break:break-all}
+  .dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.dz-grid{grid-template-columns:1fr}}
+  .dz-col{min-width:0}
+  .dz-lab{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .dz-code{font-family:var(--mono);font-size:12px;background:var(--term-bg);color:var(--term-ink);border-radius:9px;padding:12px;overflow-x:auto;white-space:pre;line-height:1.6;margin:0}
+  .dz-code .hl{display:block;background:rgba(255,120,110,.16);color:#ffb3ad;margin:0 -12px;padding:0 12px}
+  .dz-code.mod .add{display:block;background:rgba(95,211,154,.18);color:#8ff0c0;margin:0 -12px;padding:0 12px}
+  .dz-desc{font-size:13px;color:var(--ink);margin-top:14px;line-height:1.65}
+  .dz-result{margin-top:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;line-height:1.6}
+  .dz-verify{margin-top:12px;font-size:12px;color:var(--muted);border-left:3px solid var(--good);padding-left:10px}
+
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
   .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
@@ -365,6 +380,21 @@
   <div class="eyebrow">계층별 에너지 흐름</div>
   <div class="pipe-card">
     <div class="pipe-scroll"><div class="pipe" id="pipe"></div></div>
+  </div>
+
+  <div class="eyebrow">변조 상세 — 오픈소스 근거 <span class="sil-tag" id="dz-tag">지점 미선택</span></div>
+  <div class="detail-card">
+    <div class="dz-head">
+      <div class="dz-proj" id="dz-proj">변조 지점(M1~M4)을 선택하면 해당 오픈소스 프로젝트·파일·실제 코드·변조·결과가 표시됩니다.</div>
+      <div class="dz-file" id="dz-file"></div>
+    </div>
+    <div class="dz-grid" id="dz-grid" hidden>
+      <div class="dz-col"><div class="dz-lab">원본 — 오픈소스 그대로</div><pre class="dz-code" id="dz-orig"></pre></div>
+      <div class="dz-col"><div class="dz-lab">변조 후</div><pre class="dz-code mod" id="dz-mod"></pre></div>
+    </div>
+    <div class="dz-desc" id="dz-desc"></div>
+    <div class="dz-result" id="dz-result" hidden></div>
+    <div class="dz-verify" id="dz-verify"></div>
   </div>
 
   <div class="eyebrow">발표용 흐름 — 자동차 · 충전기 · 결제기 <span class="sil-tag">SIL 시뮬레이션</span></div>
@@ -703,7 +733,76 @@ function renderInvoice(){
   }
   full.innerHTML=html;
 }
-function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();renderRail();}
+function renderAll(){renderStates();renderMetrics();renderPipeline();renderInvoice();renderScene();renderExpBtns();renderRecords();renderRail();renderDetail();}
+
+// ---- detailed source evidence (real open-source code per point) ----
+const POINT_SRC={
+  M1:{proj:"EVerest (everest-core) — 이 저장소 밖(고정 런타임 이미지)",
+      file:"YetiSimulator 모듈 · powermeter 구현  (MQTT publish: powermeter.energy_Wh.total)",
+      verify:"EVerest 측 소스. 현재 고정 이미지라 변조엔 실험용 이미지 재빌드 필요. 전 계층이 일치해 데이터만으론 탐지 불가.",
+      orig:["// EVerest powermeter가 발행하는 누적 계량 (개념도)",
+            "publish( powermeter.energy_Wh.total = measured_Wh );   // ← 계량 생성 지점"], hl:1,
+      mod:"publish( powermeter.energy_Wh.total = measured_Wh * {f} );   // M1 변조",
+      desc:"충전기가 계량값을 '생성'하는 지점. 여기서 낮추면 OCPP·DB·CDR·청구서가 서로 완전히 일치한 채로 낮아져, 계층 간 교차대조로도 탐지되지 않는다(가장 위험)."},
+  M2:{proj:"OCPP 2.0.1 전송 구간 (EVerest → CitrineOS) — 코드 파일이 아닌 '와이어'",
+      file:"TransactionEventRequest.meterValue[].sampledValue[]  (measurand = Energy.Active.Import.Register)",
+      verify:"citrineos 소스 변경 없음 — 중간 proxy 구현 필요(현재 미구현). 백홀이 평문 ws:// 라 가능하며, OCPP TLS(프로파일 2/3)면 차단.",
+      orig:['{ "measurand": "Energy.Active.Import.Register",',
+            '  "value": 48.0,                 // ← 전송되는 계량 샘플값',
+            '  "unitOfMeasure": { "unit": "kWh" } }'], hl:1,
+      mod:'  "value": 4.8,                  // 중간 proxy가 × {f} 로 재작성',
+      desc:"EVerest가 CSMS로 보내는 OCPP 메시지의 계량 샘플. 전송 중 proxy가 value를 낮추면 서버 수신값이 작아져 totalKwh 집계가 줄어든다."},
+  M3:{proj:"CitrineOS · citrineos-core @ 4fd7599  (이 저장소 vendor/)",
+      file:"packages/base/src/util/meter-value-utils.ts · getTotalKwh()  (line 46)  ·  저장 호출: dal/.../transaction-event.ts:368",
+      verify:"이 저장소 소스에서 직접 확인 가능(고정 커밋). 변조 시 citrine 이미지 재빌드.",
+      orig:["const registerMap = this.getRegisterValuesMap(filteredValues);",
+            "if (registerMap.size > 0) {",
+            "  const sorted = this.getSortedKwhByTimestampAscending(registerMap);",
+            "  if (meterStart === undefined) {",
+            "    return sorted[sorted.length - 1] - sorted[0];",
+            "  }",
+            "  return sorted[sorted.length - 1] - meterStart;   // ← totalKwh 집계",
+            "}"], hl:6,
+      mod:"  return (sorted[sorted.length - 1] - meterStart) * {f};   // M3 변조",
+      desc:"서버가 meterValue(누적 register)로 거래 totalKwh를 계산하는 핵심 함수. 반환을 낮추면 DB에 저장되는 거래 에너지가 작아져 CDR·청구서로 전파된다."},
+  M4:{proj:"CitrineOS · citrineos-core @ 4fd7599  (이 저장소 vendor/)",
+      file:"packages/ocpi/src/mappers/cdr-mapper.ts · line 129",
+      verify:"이 저장소 소스에서 직접 확인 가능. 라이브 스택 실증 완료 — DB totalKwh 0.277 ↔ OCPI CDR 0.0277 (1/10), 거래 cd4d321b.",
+      orig:["total_cost: calculateTotalCdrCost(priced, tariff),",
+            "total_fixed_cost: calculateFixedCost(tariff),",
+            "total_energy: session.kwh,                 // ← CDR 에너지",
+            "total_energy_cost: calculateEnergyCost(session, tariff),",
+            "total_time: calculateTotalTimeHours(session),"], hl:2,
+      mod:"total_energy: session.kwh * {f},           // M4 변조",
+      desc:"OCPI CDR을 만들 때 total_energy에 서버 집계값(session.kwh)을 그대로 넣는다. 여기에 축소 배율을 곱하면 CDR·청구서 에너지가 그만큼 낮아진다. Billing 엔진은 CDR의 total_energy만 요율에 곱한다."},
+};
+function renderDetail(){
+  const pt=S.inject.point, blocked=(pt==="M2"&&S.tls);
+  const f=((S.inject.pct||10)/100);
+  const tag=$("dz-tag"), grid=$("dz-grid"), result=$("dz-result");
+  if(!pt){
+    tag.textContent="지점 미선택";
+    $("dz-proj").textContent="변조 지점(M1~M4)을 선택하면 해당 오픈소스 프로젝트·파일·실제 코드·변조·결과가 표시됩니다.";
+    $("dz-file").textContent=""; grid.hidden=true; result.hidden=true;
+    $("dz-desc").textContent=""; $("dz-verify").textContent=""; return;
+  }
+  const s=POINT_SRC[pt];
+  tag.textContent=pt;
+  $("dz-proj").textContent=s.proj;
+  $("dz-file").textContent=s.file;
+  grid.hidden=false;
+  $("dz-orig").innerHTML=s.orig.map((ln,i)=>`<span class="${i===s.hl?'hl':''}">${esc(ln)||' '}</span>`).join("");
+  $("dz-mod").innerHTML=`<span class="add">${esc(s.mod.replace("{f}", f))}</span>`;
+  $("dz-desc").textContent=s.desc;
+  const d=CUR_DIGITS[S.currency];
+  const trueE=S.delivered, rep=reportedEnergy(S.delivered);
+  const amt=roundHalfUp(rep*S.rate,d), norm=roundHalfUp(trueE*S.rate,d);
+  result.hidden=false;
+  result.innerHTML = blocked
+    ? `결과: 🔒 OCPP TLS로 전송 변조 차단 → 보고=실측 ${fmtE(trueE)} kWh · 청구 <b>${fmtMoney(amt,S.currency)} ${S.currency}</b> (정상)`
+    : `결과(실시간): 실측 <b>${fmtE(trueE)} kWh</b> → 보고 <b style="color:var(--bad)">${fmtE(rep)} kWh</b> (×${f}) → 청구 <b style="color:var(--bad)">${fmtMoney(amt,S.currency)} ${S.currency}</b>  <span style="color:var(--muted)">(정상이면 ${fmtMoney(norm,S.currency)} ${S.currency})</span>`;
+  $("dz-verify").textContent="검증 가능성: "+s.verify;
+}
 
 // ---- live injection-detail rail: where/how tampered + live 실측→보고 + invoice ----
 const POINT_DETAIL={
