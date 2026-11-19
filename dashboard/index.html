@@ -185,6 +185,8 @@
   .scene-bar{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
   .playbtn{font:inherit;font-weight:600;font-size:13px;cursor:pointer;border:1px solid var(--accent);background:var(--accent-soft);
     color:var(--accent);border-radius:9px;padding:8px 14px;flex:none}
+  .playbtn.demo{border-color:var(--good);background:var(--good-soft);color:var(--good)}
+  .playbtn.stop{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
   .narr{flex:1;min-width:220px;font-size:13px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);
     border-radius:9px;padding:9px 12px}
   .narr b{font-weight:600}
@@ -314,6 +316,7 @@
       </div>
     </div>
     <div class="scene-bar">
+      <button class="playbtn demo" id="demoBtn" type="button">▶ 자동 시연</button>
       <button class="playbtn" id="playBtn" type="button">▶ 흐름 재생</button>
       <div class="narr" id="narr">세션을 종료하거나 <b>흐름 재생</b>을 누르면 자동차 → 충전기 → 결제기 순서로, 어느 지점에서 변조가 일어나 청구서가 어떻게 바뀌는지 보여줍니다.</div>
     </div>
@@ -371,6 +374,8 @@ const BOUNDARY=[
 const INJECT_IDX={M1:1,M2:2,M3:3,M4:4};
 const PHASES=["idle","slac","v2g","pnc","ready","charging","ended"];
 const SIM_SPEED=300;      // 1 real second = 300 sim seconds
+let simSpeed=SIM_SPEED;   // boosted during auto-demo
+let demoRunning=false, demoCancel=false;
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
 let S={};
@@ -478,7 +483,7 @@ function tick(ts){
   if(S.phase!=="charging"){rafId=null;return;}
   if(lastTs==null)lastTs=ts;
   const dtReal=(ts-lastTs)/1000; lastTs=ts;
-  const dtSim=dtReal*SIM_SPEED;
+  const dtSim=dtReal*simSpeed;
   S.simSec+=dtSim;
   const dE=powerKw()*(dtSim/3600);
   const maxDeliver=(100-S.soc0)/100*S.capacity;
@@ -637,7 +642,7 @@ function playFlow(){
   ["aCar","aChg","aPay"].forEach(i=>$(i).classList.remove("hot","done"));
   burst.hidden=true; token.classList.remove("manip"); token.innerHTML=`${fmtE(trueE)} <small>kWh</small>`;
   const injFrac=inj!=null?(MX[inj]-SX0)/(SX1-SX0):null;
-  let tampered=false,start=null;const DUR=5200;
+  let tampered=false,start=null;const DUR=demoRunning?2600:5200;
   if(flowRAF)cancelAnimationFrame(flowRAF);
   function step(ts){
     if(start==null)start=ts;
@@ -676,6 +681,7 @@ const HELP=[
   ["set rate <v> / set currency USD|EUR|KRW","요율·통화"],
   ["set capacity <kWh> / set soc <%>","배터리 용량·시작 SoC"],
   ["set amps <A> / set phases <n>","전류·상 수 (전력 변경)"],
+  ["demo","자동 시연: 정상→M1→M2(±TLS)→M3→M4 순차 재생"],
   ["flow / replay","자동차→충전기→결제기 흐름도 재생"],
   ["status / reset / clear","상태 출력 / 초기화 / 로그 지움"],
 ];
@@ -690,6 +696,7 @@ function runCmd(raw){
   if(c==="stop"||c==="stop-session"){stopSession();return;}
   if(c==="clear"){$("out").innerHTML="";return;}
   if(c==="flow"||c==="replay"){playFlow();log("흐름도 재생.","dim");return;}
+  if(c==="demo"){demoRun();return;}
   if(c==="reset"){reset(true);renderAll();log("세션 상태 초기화 (설정 유지).","ok");return;}
   if(c==="status"){
     log(`phase=${S.phase} soc=${socPct().toFixed(1)}% delivered=${fmtE(S.delivered)}kWh power=${powerKw().toFixed(2)}kW`,"info");
@@ -743,6 +750,43 @@ $("tlsChk").addEventListener("change",()=>{S.tls=$("tlsChk").checked;
   log(`OCPP 보안 프로파일: ${S.tls?"2/3 (TLS·전송 암호화)":"0/1 (평문 ws://)"}.`,"dim");renderAll();});
 $("expPct").addEventListener("input",()=>{if(S.inject.point){S.inject.pct=Math.min(99,Math.max(1,parseFloat($("expPct").value)||10));renderAll();}});
 $("recClear").addEventListener("click",()=>{records=[];renderRecords();log("실험 기록 삭제.","dim");});
+
+// ---- auto demo (for recording): 정상 → M1 → M2(off) → M2(on·차단) → M3 → M4 ----
+function sleepMs(ms){return new Promise(r=>setTimeout(r,ms));}
+function waitEnded(timeoutMs){return new Promise(res=>{const t0=Date.now();
+  const iv=setInterval(()=>{if(S.phase==="ended"||demoCancel||Date.now()-t0>timeoutMs){clearInterval(iv);res();}},120);});}
+async function demoRun(){
+  if(demoRunning)return;
+  demoRunning=true; demoCancel=false;
+  const btn=$("demoBtn"); btn.textContent="■ 시연 중지"; btn.classList.add("stop");
+  records=[]; renderRecords(); $("out").innerHTML="";
+  if(flowRAF){cancelAnimationFrame(flowRAF);flowRAF=null;}
+  S.phase="idle"; S.capacity=60; S.soc0=20; S.rate=0.30; S.currency="USD"; $("expPct").value="10";
+  simSpeed=3500;
+  log("자동 시연 시작 — 48 kWh 충전, 변조 시 실제의 10%만 보고. 6단계 순차 재생.","ok");
+  const steps=[
+    {p:null,tls:false,c:"① 정상 — 변조 없음"},
+    {p:"M1",tls:false,c:"② M1 계량 생성 조작"},
+    {p:"M2",tls:false,c:"③ M2 OCPP 전송 조작 (TLS OFF)"},
+    {p:"M2",tls:true, c:"④ M2 + OCPP TLS ON → 전송 암호화로 차단"},
+    {p:"M3",tls:false,c:"⑤ M3 CSMS 처리·저장 조작"},
+    {p:"M4",tls:false,c:"⑥ M4 CDR 변환 조작"},
+  ];
+  for(const s of steps){
+    if(demoCancel)break;
+    S.inject = s.p?{point:s.p,pct:10}:{point:null,pct:null};
+    S.tls=s.tls; $("tlsChk").checked=s.tls; renderAll();
+    log("━━━ 자동 시연 "+s.c+" ━━━","evt");
+    await sleepMs(1000); if(demoCancel)break;
+    await startSession(); if(demoCancel)break;
+    await waitEnded(30000); if(demoCancel)break;
+    await sleepMs(3200);
+  }
+  simSpeed=SIM_SPEED; demoRunning=false;
+  btn.textContent="▶ 자동 시연"; btn.classList.remove("stop");
+  log(demoCancel?"자동 시연 중지.":"━━━ 자동 시연 완료 — 아래 ‘실험 기록’에 6개 결과 비교 ━━━", demoCancel?"warn":"ok");
+}
+$("demoBtn").addEventListener("click",()=>{ demoRunning ? (demoCancel=true) : demoRun(); });
 
 // theme
 (function(){const btn=$("themeBtn");let t=null;try{t=localStorage.getItem("mterm-theme");}catch(e){}
