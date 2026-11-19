@@ -43,13 +43,13 @@
   }
   *{box-sizing:border-box}
   body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;margin:0}
-  .wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:0 40px}
+  .wrap{max-width:none;margin:0;padding-inline:24px;padding-block:0 40px}
   h1,h2,h3{text-wrap:balance;margin:0}
   .mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
   header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
     backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-  .top-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .top-in{margin:0;padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .brand{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0}
   .brand h1{font-size:18px;font-weight:600;letter-spacing:-.2px}
   .brand .sub{font-size:12px;color:var(--muted)}
@@ -216,6 +216,20 @@
   .rtag.r-bad{color:var(--bad);background:var(--bad-soft)} .rtag.r-good{color:var(--good);background:var(--good-soft)} .rtag.r-ok{color:var(--muted);background:var(--panel-2)}
   .rnote{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:normal!important;min-width:180px}
 
+  /* audit / live-stack evidence */
+  .audit-card{background:var(--panel);border:1px solid var(--good);border-left:5px solid var(--good);border-radius:14px;padding:18px}
+  .audit-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--good);background:var(--good-soft);border:1px solid var(--good);border-radius:999px;padding:4px 11px}
+  .audit-badge .b{width:7px;height:7px;border-radius:50%;background:var(--good)}
+  .audit-lead{font-size:13.5px;margin:12px 0 0}
+  .audit-lead b{font-weight:600}
+  .audit-meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;word-break:break-all}
+  .audit-diff{font-family:var(--mono);font-size:12.5px;background:var(--term-bg);color:var(--term-ink);border-radius:9px;padding:11px 13px;overflow-x:auto;white-space:pre;margin-top:12px;line-height:1.5}
+  .audit-diff .del{color:#ff8178} .audit-diff .add{color:#5fd39a} .audit-diff .cmt{color:var(--term-dim)}
+  .audit-repro{font-family:var(--mono);font-size:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;overflow-x:auto;white-space:pre;margin-top:12px;color:var(--ink);line-height:1.55}
+  .audit-repro .c{color:var(--muted)}
+  .audit-note{font-size:12.5px;color:var(--muted);margin-top:12px}
+  .sil-tag{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);border-radius:5px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
   .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
@@ -280,7 +294,7 @@
     </div>
   </div>
 
-  <div class="eyebrow">실험 제어 — 한 번에 한 지점만 변조</div>
+  <div class="eyebrow">실험 제어 — 한 번에 한 지점만 변조 <span class="sil-tag">SIL 시뮬레이션</span></div>
   <div class="exp-card">
     <div class="exp-row">
       <span class="exp-lbl">변조 지점</span>
@@ -300,7 +314,7 @@
     <div class="pipe-scroll"><div class="pipe" id="pipe"></div></div>
   </div>
 
-  <div class="eyebrow">발표용 흐름 — 자동차 · 충전기 · 결제기</div>
+  <div class="eyebrow">발표용 흐름 — 자동차 · 충전기 · 결제기 <span class="sil-tag">SIL 시뮬레이션</span></div>
   <div class="scene-card">
     <div class="scene-scroll">
       <div class="scene">
@@ -337,6 +351,34 @@
       </table>
     </div>
     <button class="playbtn" id="recClear" type="button" style="margin-top:12px">기록 지우기</button>
+  </div>
+
+  <div class="eyebrow">라이브 스택 실측 — 감사 증거 (시뮬레이션 아님)</div>
+  <div class="audit-card">
+    <span class="audit-badge"><span class="b"></span>LIVE · 실행·기록됨 2026-11-19 · 재현 가능</span>
+    <p class="audit-lead">아래 수치는 이 대시보드가 계산한 값이 <b>아니라</b>, 실행 중인 CitrineOS 스택의 <b>PostgreSQL·OCPI에서 실제로 조회</b>한 값입니다. M4 변조(코드 한 줄)를 실제로 가하고 EVerest 충전 세션을 돌린 뒤 수집했으며, 실험 후 원복했습니다. vendor 커밋 <span class="mono">4fd7599</span> 고정 유지, 보안옵션 미변경(PnC 체인 검증 ON).</p>
+    <div class="audit-meta">거래 ID: cd4d321b-f16f-4b5e-a5b3-8e75d06fee93 · 증거 파일: diagnostics/live-m4-20261119T053908Z/ (vendor diff · delivery.json · 교차대조)</div>
+    <div class="audit-diff"><span class="cmt">// vendor/citrineos-core/packages/ocpi/src/mappers/cdr-mapper.ts:129</span>
+<span class="del">- total_energy: session.kwh,</span>
+<span class="add">+ total_energy: session.kwh * 0.1,   // M4 변조 (실험 후 원복)</span></div>
+    <div class="rec-scroll" style="margin-top:12px">
+      <table class="rec">
+        <thead><tr><th>조회 경로 (출처)</th><th>값</th><th>의미</th></tr></thead>
+        <tbody>
+          <tr><td>CitrineOS Postgres · <span class="rnote">Transactions.totalKwh</span></td><td class="num" style="color:var(--true);font-weight:700">0.277 kWh</td><td>서버가 실제 집계한 참값</td></tr>
+          <tr><td>OCPI · <span class="rnote">CDR.total_energy</span></td><td class="num" style="color:var(--bad);font-weight:700">0.0277 kWh</td><td>변조가 전파된 값</td></tr>
+          <tr><td>Billing · <span class="rnote">invoice.energy_kwh / amount</span></td><td class="num" style="color:var(--bad);font-weight:700">0.0277 kWh / $0.01</td><td>최종 청구(실제의 1/10)</td></tr>
+          <tr><td>대조 · <span class="rnote">DB ÷ CDR</span></td><td class="num" style="font-weight:700">10.0×</td><td>변조 배율 그대로 전파</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="audit-repro"><span class="c"># 누구나 동일 결과로 재현 — 대시보드가 아니라 실제 DB에서 조회</span>
+<span class="c"># 1) 변조:</span> cdr-mapper.ts 129행  total_energy: session.kwh → session.kwh * 0.1
+<span class="c"># 2) OCPI만 재빌드:</span> docker compose ... up -d --build --no-deps citrineos-ocpi
+<span class="c"># 3) 실세션:</span> bash scripts/clean_everest.sh start-session  →  stop-session
+<span class="c"># 4) 서버 집계값 조회:</span> docker exec ...ocpp-db-1 psql -U citrine -d citrine \
+     -c "SELECT \"totalKwh\" FROM \"Transactions\" WHERE \"transactionId\"='cd4d...'"</div>
+    <p class="audit-note">→ 위 흐름도·청구서(시뮬레이션)와 <b>같은 10:1 비율</b>이 <b>실제 스택</b>에서 재현됨을 뜻합니다. 숫자가 임의로 만들어진 게 아니라, 변조 코드 한 줄이 서버·OCPI·청구서로 전파된 결과입니다.</p>
   </div>
 
   <div class="note">
