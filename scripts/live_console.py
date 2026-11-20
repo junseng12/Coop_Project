@@ -66,6 +66,7 @@ def live_attack():
         rd = run_dir()
         if not rd:
             emit("err", "diagnostics/live-m2-* 재현 폴더가 없습니다."); return
+        metrics(phase="setup")
         emit("step", "① 중간자 프록시 기동 + EVerest 리다이렉트 (약 1분, 매니저 재시작)")
         out = sh(["bash", str(rd / "mitm_up.sh")], timeout=180)
         if "charger connected" in out or "listening" in out:
@@ -76,6 +77,7 @@ def live_attack():
         emit("step", "② 충전 세션 시작 (ISO 15118 · PnC 인증 · 전력 인출)")
         mqtt_pub("everest_external/nodered/1/carsim/cmd/execute_charging_session",
                  "sleep 1;iso_wait_slac_matched;iso_start_v2g_session ac,-1,-1;iso_wait_pwr_ready;iso_draw_power_regulated 16,3;sleep 120")
+        metrics(phase="charging")
         emit("charge", "충전 중 — 충전기 실측(참) vs 서버 저장(변조)을 실시간 추적")
         last_rew = 0
         for i in range(22):  # ~50s of charging
@@ -92,6 +94,7 @@ def live_attack():
             if rew > last_rew:
                 emit("evt", f"⚡ 중간자 변조 발생 #{rew}: meterValue ×0.1")
                 last_rew = rew
+        metrics(phase="ended")
         emit("step", "③ 충전 종료 → 거래 확정")
         mqtt_pub("everest_external/nodered/1/carsim/cmd/modify_charging_session",
                  "iso_stop_charging;iso_wait_v2g_session_stopped;unplug")

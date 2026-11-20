@@ -300,6 +300,8 @@
   /* live mode (only when served by scripts/live_console.py) */
   .live-only{display:none}
   body.live .live-only{display:block}
+  body.live .sim-only{display:none!important}
+  body.live .brand h1::after{content:" · LIVE";color:var(--bad)}
   .live-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
   .lm{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
   .lm span{font-size:10px;color:var(--muted)}
@@ -326,7 +328,8 @@
       <span class="sub">Virtual EV · EVerest · CitrineOS · OCPI · Billing — 명령어로 진행하는 SIL 콘솔</span>
     </div>
     <span class="pill" id="ratePill">0.30 USD/kWh</span>
-    <a class="tgl" href="results.html">발표 결과 ↗</a>
+    <button class="tgl live-only" id="liveBtn" type="button" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-weight:700">🔴 라이브 M2 공격 실행</button>
+    <a class="tgl sim-only" href="results.html">발표 결과 ↗</a>
     <button class="tgl" id="themeBtn" type="button">테마</button>
   </div>
 </header>
@@ -378,8 +381,8 @@
     </div>
   </div>
 
-  <div class="eyebrow">실험 제어 — 한 번에 한 지점만 변조 <span class="sil-tag">SIL 시뮬레이션</span></div>
-  <div class="exp-card">
+  <div class="eyebrow sim-only">실험 제어 — 한 번에 한 지점만 변조 <span class="sil-tag">SIL 시뮬레이션</span></div>
+  <div class="exp-card sim-only">
     <div class="exp-row">
       <span class="exp-lbl">변조 지점</span>
       <div class="exp-btns" id="expBtns"></div>
@@ -398,8 +401,8 @@
     <div class="pipe-scroll"><div class="pipe" id="pipe"></div></div>
   </div>
 
-  <div class="eyebrow">변조 상세 — 오픈소스 근거 <span class="sil-tag" id="dz-tag">지점 미선택</span></div>
-  <div class="detail-card">
+  <div class="eyebrow sim-only">변조 상세 — 오픈소스 근거 <span class="sil-tag" id="dz-tag">지점 미선택</span></div>
+  <div class="detail-card sim-only">
     <div class="dz-head">
       <div class="dz-proj" id="dz-proj">변조 지점(M1~M4)을 선택하면 해당 오픈소스 프로젝트·파일·실제 코드·변조·결과가 표시됩니다.</div>
       <div class="dz-file" id="dz-file"></div>
@@ -531,17 +534,6 @@
         <div class="rd-amt" id="rd-amt">0.00 USD</div>
         <div class="rd-amtsub" id="rd-amtsub">전량 청구</div>
       </div>
-    </div>
-    <div class="eyebrow live-only" style="margin-top:18px">🔴 라이브 공격 (실제 스택) <span class="live-badge">LIVE</span></div>
-    <div class="rail-inner live-only" id="livePanel">
-      <button class="playbtn" id="liveBtn" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad)">🔴 라이브 M2 공격 실행</button>
-      <div class="live-metrics">
-        <div class="lm"><span>충전기 실측 (참)</span><b id="lm-true">— kWh</b></div>
-        <div class="lm"><span>서버 저장 (변조)</span><b id="lm-stored" class="bad">— kWh</b></div>
-        <div class="lm"><span>축소 비율</span><b id="lm-ratio">—</b></div>
-        <div class="lm"><span>변조 횟수</span><b id="lm-rew">0</b></div>
-      </div>
-      <div class="live-log" id="liveLog"><div class="step">버튼을 누르면 실제 스택에서 중간자 공격이 실행되고, 위 값과 아래 로그가 실시간으로 갱신됩니다 (약 3분, 끝나면 자동 원복).</div></div>
     </div>
   </aside>
 </div>
@@ -1106,26 +1098,31 @@ $("demoBtn").addEventListener("click",()=>{ demoRunning ? (demoCancel=true) : de
   }catch(e){}
 })();
 function initLive(){
-  const btn=$("liveBtn"); let poll=null, seen=0;
+  const btn=$("liveBtn"); let poll=null, seen=0, played=false;
+  const KMAP={step:"evt",ok:"ok",err:"err",evt:"evt",result:"ok",charge:"dim",warn:"warn"};
+  const PMAP={setup:"slac",charging:"charging",ended:"ended"};
   btn.addEventListener("click",()=>{
     if(btn.disabled)return;
     btn.disabled=true; btn.textContent="🔴 공격 진행 중...";
-    $("liveLog").innerHTML=""; seen=0;
+    seen=0; played=false; $("out").innerHTML=""; records=[];
+    // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
+    S.inject={point:"M2",pct:10}; S.tls=false; S.rate=0.30; S.currency="USD";
+    S.capacity=0.2; S.soc0=0; S.delivered=0; S.phase="idle"; S.simSec=0;
+    log("라이브 M2 공격 시작 — 실제 스택에서 OCPP meterValue를 가로채 변조합니다.","ok");
+    renderAll();
     fetch('/api/live/start',{method:'POST'}).then(()=>{ poll=setInterval(tick,1000); });
   });
-  function addLog(e){const d=document.createElement("div");d.className=e.kind||"step";
-    d.innerHTML=`<span class="ts">[${e.t}]</span> ${esc(e.text)}`;$("liveLog").appendChild(d);}
   function tick(){
     fetch('/api/live/state',{cache:'no-store'}).then(r=>r.json()).then(s=>{
       const m=s.metrics||{};
-      if(m.true_kwh!=null)$("lm-true").textContent=m.true_kwh.toFixed(4)+" kWh";
-      if(m.stored_kwh!=null)$("lm-stored").textContent=m.stored_kwh.toFixed(4)+" kWh";
-      if(m.ratio!=null)$("lm-ratio").textContent=m.ratio+"×";
-      if(m.rewrites!=null)$("lm-rew").textContent=m.rewrites;
+      if(typeof m.true_kwh==="number") S.delivered=m.true_kwh;
+      if(m.phase && PMAP[m.phase]) S.phase=PMAP[m.phase];
       const ev=s.events||[];
-      for(let i=seen;i<ev.length;i++)addLog(ev[i]);
-      seen=ev.length; $("liveLog").scrollTop=$("liveLog").scrollHeight;
-      if(s.done){clearInterval(poll);poll=null;btn.disabled=false;btn.textContent="🔴 라이브 M2 공격 다시 실행";}
+      for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); }
+      seen=ev.length;
+      renderAll();
+      if(S.phase==="ended" && !played){ played=true; playFlow(); }
+      if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }
 }
