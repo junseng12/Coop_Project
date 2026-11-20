@@ -339,7 +339,7 @@
 
 <div class="wrap">
   <div class="main">
-  <div class="live-only" style="margin:16px 0 0;padding:9px 13px;border:1px solid var(--warn);background:var(--warn-soft);border-radius:10px;font-size:12.5px;color:var(--ink)">⏩ <b>실제 전기차 완충 용량(≈48 kWh) 기준</b> · 충전을 <b>가속해(빠르게) 재생</b>합니다 · <b>변조 비율(10:1)은 실제 측정값</b> (실측 원값은 아래 ‘라이브 스택 실측’ 감사 패널)</div>
+  <div class="live-only" style="margin:16px 0 0;padding:9px 13px;border:1px solid var(--warn);background:var(--warn-soft);border-radius:10px;font-size:12.5px;color:var(--ink)">⏩ <b>실제 승용 EV 완충(≈70 kWh·급속 약 2만원) 기준</b> · 충전을 <b>가속해(빠르게) 재생</b>합니다 · <b>변조 비율(10:1)은 실제 측정값</b> (실측 원값은 아래 ‘라이브 스택 실측’ 감사 패널)</div>
   <div class="grid">
     <!-- terminal -->
     <div>
@@ -570,7 +570,7 @@ let demoRunning=false, demoCancel=false;
 let LIVE=false;           // true when served by live_console.py (real attack)
 // live sessions deliver ~0.144 kWh in real time; scale the DISPLAY to a realistic
 // full charge (~48 kWh) and label that charging time was compressed. Ratio (10:1) is real.
-const LIVE_SCALE=333;     // 0.144 kWh * 333 ~= 48 kWh (full-charge-equivalent view)
+const LIVE_SCALE=600, LIVE_FULL=69;   // real-EV full charge ~70 kWh; scale up + clamp to full
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
@@ -1121,16 +1121,16 @@ function initLive(){
     seen=0; played=false; $("out").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
-    S.capacity=60; S.soc0=20; S.delivered=0; S.phase="idle"; S.simSec=0;
+    S.capacity=77; S.soc0=10; S.delivered=0; S.phase="idle"; S.simSec=0;
     log("현장 M2 공격 — 운전자가 충전기 통신선에 장치를 물려 OCPP 보고값을 가로챕니다.","ok");
-    log("※ 실제 완충 용량(≈48 kWh) 기준 · 충전 가속 재생 · 변조 비율(10:1)은 실측값.","dim");
+    log("※ 실제 승용 EV 완충(배터리 77 kWh·약 70 kWh 충전·급속 약 2만원) 기준, 충전 가속 재생 · 변조 비율(10:1)은 실측값.","dim");
     renderAll();
     fetch('/api/live/start',{method:'POST'}).then(()=>{ poll=setInterval(tick,1000); });
   });
   function tick(){
     fetch('/api/live/state',{cache:'no-store'}).then(r=>r.json()).then(s=>{
       const m=s.metrics||{};
-      if(typeof m.true_kwh==="number") S.delivered=m.true_kwh*LIVE_SCALE;  // full-charge-equivalent display
+      if(typeof m.true_kwh==="number") S.delivered=Math.min(m.true_kwh*LIVE_SCALE, LIVE_FULL);  // full-charge view (~70 kWh)
       if(m.phase && PMAP[m.phase]) S.phase=PMAP[m.phase];
       const ev=s.events||[];
       for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); }

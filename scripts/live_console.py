@@ -66,7 +66,7 @@ def live_attack():
         rd = run_dir()
         if not rd:
             emit("err", "diagnostics/live-m2-* 재현 폴더가 없습니다."); return
-        emit("warn", "※ 실제 전기차 완충 용량(≈48 kWh)을 가속해(빠르게) 보여줍니다(실세션 ~50초). 변조 비율(10:1)은 실측값입니다.")
+        emit("warn", "※ 실제 승용 EV 완충(≈70 kWh·급속 약 2만원)을 가속해(빠르게) 보여줍니다(실세션 ~50초). 변조 비율(10:1)은 실측값입니다.")
         metrics(phase="setup")
         emit("step", "① 공격자가 충전기 통신선(OCPP 업링크)에 중간자 장치를 연결 (약 1분)")
         out = sh(["bash", str(rd / "mitm_up.sh")], timeout=180)
@@ -108,7 +108,7 @@ def live_attack():
         metrics(**m)
         emit("evt", f"⚡ 최종: 장치의 보고값 변조 {rew}회 (종료 meterValue 포함)")
         if true is not None and stored is not None:
-            emit("result", f"충전기 실측 {true:.4f}→서버 저장 {stored:.4f} kWh (비율 ≈{m.get('ratio','?')}×, 실측) · 완충 환산 ≈48→4.8 kWh (14,400→1,440원) · 거래 {tid}")
+            emit("result", f"충전기 실측 {true:.4f}→서버 저장 {stored:.4f} kWh (비율 ≈{m.get('ratio','?')}×, 실측) · 완충 환산 ≈70→7 kWh (약 21,000→2,100원) · 거래 {tid}")
         # bill it
         token = ""
         envf = ROOT / ".env"
