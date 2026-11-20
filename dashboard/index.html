@@ -301,6 +301,18 @@
   .dz-verify{margin-top:12px;font-size:12px;color:var(--muted);border-left:3px solid var(--good);padding-left:10px}
   .rd-flash{margin-top:9px;font-size:12px;line-height:1.5;color:var(--ink);background:var(--bad-soft);border-radius:8px;padding:8px 10px;min-height:1px}
   .rd-flash:empty{display:none}
+  .lp-stage{border:1px solid var(--line);border-radius:10px;background:var(--panel-2);padding:9px 11px}
+  .lp-stage.atk{border-color:var(--bad);background:var(--bad-soft)}
+  .lp-stage.bad{border-color:var(--bad)}
+  .lp-stage.bill{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel-2))}
+  .lp-h{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .lp-i{font-size:15px;line-height:1}
+  .lp-v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:19px;font-weight:700;color:var(--true);margin-top:3px}
+  .lp-v.bad{color:var(--bad)} .lp-v.acc{color:var(--accent)}
+  .lp-s{font-size:11px;color:var(--muted);margin-top:2px}
+  .lp-a{text-align:center;color:var(--muted);font-size:10.5px;font-family:var(--mono);margin:4px 0}
+  .lp-log{margin-top:10px;background:var(--term-bg);color:var(--term-ink);border-radius:8px;padding:9px;font-family:var(--mono);font-size:10.5px;line-height:1.5;max-height:150px;overflow-y:auto}
+  .lp-log>div{margin:1px 0} .lp-log .ts{color:var(--term-dim)} .lp-log .ok{color:#5fd39a} .lp-log .evt{color:#8fb4ff} .lp-log .result{color:#ffd166;font-weight:700} .lp-log .warn{color:#e7b84f} .lp-log .err{color:#ff8178}
 
   /* live mode (only when served by scripts/live_console.py) */
   .live-only{display:none}
@@ -516,7 +528,17 @@
   </div><!-- /main -->
   <aside class="rail">
     <div class="eyebrow">실시간 변조 전파</div>
-    <div class="rail-inner">
+    <div class="rail-inner live-only" id="livePipe">
+      <div class="lp-stage"><div class="lp-h"><span class="lp-i">🚗→⚡</span> 충전기 계량 (실측·참)</div><div class="lp-v" id="lp-true">— kWh</div><div class="lp-s">차–충전기 전력·계량 (정상)</div></div>
+      <div class="lp-a">▼ OCPP로 서버에 보고</div>
+      <div class="lp-stage atk"><div class="lp-h"><span class="lp-i">😈</span> OCPP 가로채기 (공격자 장치)</div><div class="lp-s" id="lp-atk">평문 통신 중 meterValue ×0.1 변조 — 0회</div></div>
+      <div class="lp-a">▼ 변조된 값이 서버로</div>
+      <div class="lp-stage bad"><div class="lp-h"><span class="lp-i">🗄️</span> CitrineOS DB 저장 (변조됨)</div><div class="lp-v bad" id="lp-stored">— kWh</div><div class="lp-s">Transactions.totalKwh ← 줄어든 값</div></div>
+      <div class="lp-a">▼ CDR → eMSP</div>
+      <div class="lp-stage bill"><div class="lp-h"><span class="lp-i">🧾</span> 청구서 (감액 영수증)</div><div class="lp-v acc" id="lp-bill">— 원</div><div class="lp-s" id="lp-billsub">정상 대비</div></div>
+      <div class="lp-log" id="lp-log"></div>
+    </div>
+    <div class="rail-inner sim-only">
       <div class="rd-point" id="rd-point">정상 — 변조 없음</div>
       <div class="rd-sec">
         <div class="rd-label">변조 위치 — 어디를</div>
@@ -1119,7 +1141,7 @@ function initLive(){
   btn.addEventListener("click",()=>{
     if(btn.disabled)return;
     btn.disabled=true; btn.textContent="🔴 공격 진행 중...";
-    seen=0; played=false; $("out").innerHTML=""; records=[];
+    seen=0; played=false; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
     S.capacity=77; S.soc0=10; S.delivered=0; S.phase="idle"; S.simSec=0;
@@ -1134,8 +1156,9 @@ function initLive(){
       if(typeof m.true_kwh==="number") S.delivered=Math.min(m.true_kwh*LIVE_SCALE, LIVE_FULL);  // full-charge view (~70 kWh)
       if(m.phase && PMAP[m.phase]) S.phase=PMAP[m.phase];
       const ev=s.events||[];
-      for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); }
+      for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); lpLog(e); }
       seen=ev.length;
+      updateLivePipe(m);
       renderAll();
       if(S.phase==="ended" && !played){ played=true; playFlow(); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
@@ -1143,6 +1166,18 @@ function initLive(){
   }
 }
 
+function updateLivePipe(m){
+  if(!$("lp-true")) return;
+  const t=Math.min((m.true_kwh||0)*LIVE_SCALE, LIVE_FULL);
+  const st=Math.min((m.stored_kwh||0)*LIVE_SCALE, LIVE_FULL);
+  $("lp-true").textContent = fmtE(t)+" kWh";
+  $("lp-stored").textContent = fmtE(st)+" kWh";
+  $("lp-atk").textContent = `평문 통신 중 meterValue ×0.1 변조 — ${m.rewrites||0}회`;
+  const bill=Math.round(st*300), norm=Math.round(t*300);
+  $("lp-bill").textContent = bill.toLocaleString()+" 원";
+  $("lp-billsub").textContent = `정상 ${norm.toLocaleString()}원 대비 ${norm>0?Math.round(bill/norm*100):100}% (−${norm>0?Math.round((1-bill/norm)*100):0}%)`;
+}
+function lpLog(e){ const el=$("lp-log"); if(!el) return; const d=document.createElement("div"); d.className=e.kind||"evt"; d.innerHTML=`<span class="ts">[${e.t}]</span> ${esc(e.text)}`; el.appendChild(d); el.scrollTop=el.scrollHeight; }
 // boot
 log("EVerest–CitrineOS SIL 충전 콘솔 준비 완료.","ok");
 log("start 입력 시 충전 세션이 시작됩니다. help 로 명령 목록 확인.","dim");
