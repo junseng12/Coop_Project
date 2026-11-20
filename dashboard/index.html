@@ -297,6 +297,22 @@
   .dz-result{margin-top:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;line-height:1.6}
   .dz-verify{margin-top:12px;font-size:12px;color:var(--muted);border-left:3px solid var(--good);padding-left:10px}
 
+  /* live mode (only when served by scripts/live_console.py) */
+  .live-only{display:none}
+  body.live .live-only{display:block}
+  .live-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .lm{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+  .lm span{font-size:10px;color:var(--muted)}
+  .lm b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;color:var(--true)}
+  .lm b.bad{color:var(--bad)}
+  .live-log{margin-top:12px;background:var(--term-bg);color:var(--term-ink);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;line-height:1.5;max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+  .live-log>div{margin:1px 0}
+  .live-log .ts{color:var(--term-dim)}
+  .live-log .ok{color:#5fd39a}.live-log .evt{color:#8fb4ff}.live-log .err{color:#ff8178}
+  .live-log .result{color:#ffd166;font-weight:700}.live-log .step{color:#eaf4ee}.live-log .warn{color:#e7b84f}.live-log .charge{color:#9fe0b0}
+  #liveBtn{width:100%}
+  .live-badge{font-family:var(--mono);font-size:10.5px;font-weight:700;color:#fff;background:var(--bad);border-radius:999px;padding:3px 9px}
+
   .note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-top:16px}
   .note b{color:var(--ink)}
   .note code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
@@ -515,6 +531,17 @@
         <div class="rd-amt" id="rd-amt">0.00 USD</div>
         <div class="rd-amtsub" id="rd-amtsub">전량 청구</div>
       </div>
+    </div>
+    <div class="eyebrow live-only" style="margin-top:18px">🔴 라이브 공격 (실제 스택) <span class="live-badge">LIVE</span></div>
+    <div class="rail-inner live-only" id="livePanel">
+      <button class="playbtn" id="liveBtn" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad)">🔴 라이브 M2 공격 실행</button>
+      <div class="live-metrics">
+        <div class="lm"><span>충전기 실측 (참)</span><b id="lm-true">— kWh</b></div>
+        <div class="lm"><span>서버 저장 (변조)</span><b id="lm-stored" class="bad">— kWh</b></div>
+        <div class="lm"><span>축소 비율</span><b id="lm-ratio">—</b></div>
+        <div class="lm"><span>변조 횟수</span><b id="lm-rew">0</b></div>
+      </div>
+      <div class="live-log" id="liveLog"><div class="step">버튼을 누르면 실제 스택에서 중간자 공격이 실행되고, 위 값과 아래 로그가 실시간으로 갱신됩니다 (약 3분, 끝나면 자동 원복).</div></div>
     </div>
   </aside>
 </div>
@@ -1069,6 +1096,39 @@ $("demoBtn").addEventListener("click",()=>{ demoRunning ? (demoCancel=true) : de
     const pd=window.matchMedia("(prefers-color-scheme:dark)").matches;
     const next=cur?(cur==="dark"?"light":"dark"):(pd?"light":"dark");
     document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("mterm-theme",next);}catch(e){}});})();
+
+// ---- live mode: enabled only when served by scripts/live_console.py ----
+(function(){
+  try{
+    fetch('/api/live/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{
+      if(d&&d.live){ document.body.classList.add('live'); initLive(); }
+    }).catch(()=>{});
+  }catch(e){}
+})();
+function initLive(){
+  const btn=$("liveBtn"); let poll=null, seen=0;
+  btn.addEventListener("click",()=>{
+    if(btn.disabled)return;
+    btn.disabled=true; btn.textContent="🔴 공격 진행 중...";
+    $("liveLog").innerHTML=""; seen=0;
+    fetch('/api/live/start',{method:'POST'}).then(()=>{ poll=setInterval(tick,1000); });
+  });
+  function addLog(e){const d=document.createElement("div");d.className=e.kind||"step";
+    d.innerHTML=`<span class="ts">[${e.t}]</span> ${esc(e.text)}`;$("liveLog").appendChild(d);}
+  function tick(){
+    fetch('/api/live/state',{cache:'no-store'}).then(r=>r.json()).then(s=>{
+      const m=s.metrics||{};
+      if(m.true_kwh!=null)$("lm-true").textContent=m.true_kwh.toFixed(4)+" kWh";
+      if(m.stored_kwh!=null)$("lm-stored").textContent=m.stored_kwh.toFixed(4)+" kWh";
+      if(m.ratio!=null)$("lm-ratio").textContent=m.ratio+"×";
+      if(m.rewrites!=null)$("lm-rew").textContent=m.rewrites;
+      const ev=s.events||[];
+      for(let i=seen;i<ev.length;i++)addLog(ev[i]);
+      seen=ev.length; $("liveLog").scrollTop=$("liveLog").scrollHeight;
+      if(s.done){clearInterval(poll);poll=null;btn.disabled=false;btn.textContent="🔴 라이브 M2 공격 다시 실행";}
+    }).catch(()=>{});
+  }
+}
 
 // boot
 log("EVerest–CitrineOS SIL 충전 콘솔 준비 완료.","ok");
