@@ -67,18 +67,18 @@ def live_attack():
         if not rd:
             emit("err", "diagnostics/live-m2-* 재현 폴더가 없습니다."); return
         metrics(phase="setup")
-        emit("step", "① 중간자 프록시 기동 + EVerest 리다이렉트 (약 1분, 매니저 재시작)")
+        emit("step", "① 공격자가 충전기 통신선(OCPP 업링크)에 중간자 장치를 연결 (약 1분)")
         out = sh(["bash", str(rd / "mitm_up.sh")], timeout=180)
         if "charger connected" in out or "listening" in out:
-            emit("ok", "프록시 가동 · EVerest가 프록시를 통해 서버에 연결됨")
+            emit("ok", "장치 가동 · 충전기↔서버 OCPP 통신이 공격자 장치를 경유함")
         else:
-            emit("warn", "프록시 기동 로그 확인 중...")
+            emit("warn", "장치 기동 로그 확인 중...")
         since = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        emit("step", "② 충전 세션 시작 (ISO 15118 · PnC 인증 · 전력 인출)")
+        emit("step", "② 운전자가 정상 충전 시작 (ISO 15118 PnC 인증 정상 — 인증은 건드리지 않음)")
         mqtt_pub("everest_external/nodered/1/carsim/cmd/execute_charging_session",
                  "sleep 1;iso_wait_slac_matched;iso_start_v2g_session ac,-1,-1;iso_wait_pwr_ready;iso_draw_power_regulated 16,3;sleep 120")
         metrics(phase="charging")
-        emit("charge", "충전 중 — 충전기 실측(참) vs 서버 저장(변조)을 실시간 추적")
+        emit("charge", "충전 중 — 충전기 실측(참) vs 서버가 받는 보고값(장치가 변조) 실시간 추적")
         last_rew = 0
         for i in range(22):  # ~50s of charging
             time.sleep(2.3)
@@ -92,10 +92,10 @@ def live_attack():
             if true and stored and stored > 0: m["ratio"] = round(true / stored, 1)
             metrics(**m)
             if rew > last_rew:
-                emit("evt", f"⚡ 중간자 변조 발생 #{rew}: meterValue ×0.1")
+                emit("evt", f"⚡ 장치가 OCPP 보고값 가로채 변조 #{rew}: meterValue ×0.1")
                 last_rew = rew
         metrics(phase="ended")
-        emit("step", "③ 충전 종료 → 거래 확정")
+        emit("step", "③ 충전 종료 · 선 뽑음 → 거래 확정")
         mqtt_pub("everest_external/nodered/1/carsim/cmd/modify_charging_session",
                  "iso_stop_charging;iso_wait_v2g_session_stopped;unplug")
         time.sleep(14)
@@ -105,7 +105,7 @@ def live_attack():
         if stored is not None: m["stored_kwh"] = round(stored, 4)
         if true and stored and stored > 0: m["ratio"] = round(true / stored, 1)
         metrics(**m)
-        emit("evt", f"⚡ 최종: 중간자 변조 {rew}회 (Ended meterValue 포함)")
+        emit("evt", f"⚡ 최종: 장치의 보고값 변조 {rew}회 (종료 meterValue 포함)")
         if true is not None and stored is not None:
             emit("result", f"충전기 실측 {true:.4f} kWh → 서버 저장 {stored:.4f} kWh  (≈{m.get('ratio','?')}× 축소) · 거래 {tid}")
         # bill it
@@ -116,14 +116,14 @@ def live_attack():
                 if ln.startswith("BILLING_API_TOKEN="): token = ln.split("=", 1)[1]
         sh(["python3", str(ROOT / "scripts/verify_backend.py"), "--sync", "--since", since,
             "--out", str(rd / "live_console_delivery.json")], timeout=60)
-        emit("step", "④ 청구서 발행 — 변조된 값으로 과금됨")
+        emit("step", "④ eMSP가 줄어든 값으로 등록카드 자동결제 — 운전자가 적게 냄")
     except Exception as e:
         emit("err", f"오류: {e}")
     finally:
-        emit("step", "⑤ 원복 중 (EVerest 직결 복구 · 프록시 제거)")
+        emit("step", "⑤ 공격자 장치 제거 (충전기 직결 복구·원복)")
         rd = run_dir()
         if rd: sh(["bash", str(rd / "mitm_down.sh")], timeout=180)
-        emit("ok", "원복 완료 — 라이브 공격 종료. 스택 정상.")
+        emit("ok", "장치 제거 완료 — 라이브 공격 종료. 스택 정상.")
         with LOCK: STATE["running"] = False; STATE["done"] = True; STATE["seq"] += 1
 
 class H(BaseHTTPRequestHandler):

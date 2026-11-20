@@ -175,6 +175,9 @@
     font-family:var(--mono);font-weight:700;font-size:11px;padding:4px 9px;border-radius:8px;white-space:nowrap;z-index:4;
     box-shadow:0 0 0 4px var(--bad-soft);animation:pop .3s ease-out}
   @keyframes pop{from{transform:translate(-50%,-50%) scale(.4);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+  .attacker{position:absolute;top:-4px;left:62%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:1px;animation:pop .3s ease-out}
+  .attacker .aico{font-size:20px;line-height:1}
+  .attacker .atxt{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--bad);text-align:center;line-height:1.2;background:var(--bad-soft);border:1px solid var(--bad);border-radius:6px;padding:1px 5px}
   .mmarks{position:absolute;top:150px;left:0;right:0;height:64px}
   .mmark{position:absolute;transform:translateX(-50%);text-align:center;width:118px}
   .mmark .tick{width:2px;height:14px;background:var(--line);margin:0 auto 4px}
@@ -429,6 +432,7 @@
         <div class="token" id="token">0.0 <small>kWh</small></div>
         <div class="burst" id="burst" hidden></div>
         <div class="mmarks" id="mmarks"></div>
+        <div class="attacker" id="sceneAttacker" hidden><span class="aico">😈</span><span class="atxt">공격자 장치<br>OCPP 가로채기</span></div>
       </div>
     </div>
     <div class="scene-bar">
@@ -777,14 +781,14 @@ const POINT_SRC={
             "publish( powermeter.energy_Wh.total = measured_Wh );   // ← 계량 생성 지점"], hl:1,
       mod:"publish( powermeter.energy_Wh.total = measured_Wh * {f} );   // M1 변조",
       desc:"충전기가 계량값을 '생성'하는 지점. 여기서 낮추면 OCPP·DB·CDR·청구서가 서로 완전히 일치한 채로 낮아져, 계층 간 교차대조로도 탐지되지 않는다(가장 위험)."},
-  M2:{proj:"OCPP 2.0.1 전송 구간 (EVerest → CitrineOS) — 코드 파일이 아닌 '와이어'",
-      file:"TransactionEventRequest.meterValue[].sampledValue[]  (measurand = Energy.Active.Import.Register)",
+  M2:{proj:"현장 공격 — 충전기 업링크(이더넷/4G)에 연결한 장치가 OCPP 평문 통신을 가로챔",
+      file:"충전기→서버 OCPP: TransactionEventRequest.meterValue[].sampledValue[]  (measurand = Energy.Active.Import.Register)",
       verify:"라이브 실증 완료 — Node/ws 중간자 프록시로 OCPP meterValue를 ×0.1 변조: EVerest 실측 0.118 ↔ CitrineOS 저장 0.0118 kWh(10×), 백엔드 코드 미변경. 평문 ws:// 라 가능, OCPP TLS(프로파일 2/3)면 차단. (diagnostics/live-m2-*)",
       orig:['{ "measurand": "Energy.Active.Import.Register",',
             '  "value": 48.0,                 // ← 전송되는 계량 샘플값',
             '  "unitOfMeasure": { "unit": "kWh" } }'], hl:1,
       mod:'  "value": 4.8,                  // 중간 proxy가 × {f} 로 재작성',
-      desc:"EVerest가 CSMS로 보내는 OCPP 메시지의 계량 샘플. 전송 중 proxy가 value를 낮추면 서버 수신값이 작아져 totalKwh 집계가 줄어든다."},
+      desc:"운전자가 꽂은 상태에서 충전기 통신선에 장치를 물려, 충전기가 서버로 보내는 계량 샘플(meterValue)을 전송 중 ×0.1로 바꾼다. 서버는 줄어든 값을 받아 totalKwh가 작아지고, eMSP가 그 값으로 등록카드 자동결제한다. 인증(PnC)·전력은 정상."},
   M3:{proj:"CitrineOS · citrineos-core @ 4fd7599  (이 저장소 vendor/)",
       file:"packages/base/src/util/meter-value-utils.ts · getTotalKwh()  (line 46)  ·  저장 호출: dal/.../transaction-event.ts:368",
       verify:"이 저장소 소스에서 직접 확인 가능(고정 커밋). 변조 시 citrine 이미지 재빌드.",
@@ -841,7 +845,7 @@ function renderDetail(){
 const POINT_DETAIL={
   M1:{title:"M1 · 계량 생성 조작", where:"EVerest YetiSimulator · powermeter",
       code:[["- publish energy_Wh.total = measured","del"],["+ publish energy_Wh.total = measured * {f}","add"]]},
-  M2:{title:"M2 · OCPP 전송 조작", where:"OCPP WebSocket proxy (EVerest ↔ CSMS)",
+  M2:{title:"M2 · 현장 OCPP 보고값 가로채기", where:"충전기 업링크(이더넷/4G)에 연결한 공격자 장치 — 충전기↔서버 OCPP 통신 중간자",
       code:[["- sampledValue.value = <measured>","del"],["+ sampledValue.value = <measured> * {f}","add"]]},
   M3:{title:"M3 · CSMS 처리·저장 조작", where:"citrineos-core · meter-value-utils.ts  getTotalKwh()",
       code:[["- return last - meterStart","del"],["+ return (last - meterStart) * {f}","add"]]},
@@ -924,6 +928,7 @@ function renderScene(){
   const {trueE,inj}=sceneData();
   if(flowRAF==null){ $("carV").textContent=`목표 ${fmtE(trueE)} kWh`; }
   renderMmarks(inj);
+  const atk=$("sceneAttacker"); if(atk) atk.hidden = !(S.inject.point==="M2" && injectionActive());
 }
 function playFlow(){
   const {trueE,reported,inj,point,blocked}=sceneData();
@@ -955,7 +960,8 @@ function playFlow(){
       $("aPay").classList.add(point?"hot":"done"); $("payV").textContent=`${fmtMoney(billA,S.currency)} ${S.currency}`;}
     if(p>=1){
       token.style.left=SX1+"%";
-      if(inj)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 실제 ${fmtE(trueE)} kWh(${fmtMoney(trueA,S.currency)} ${S.currency}) 충전했지만 <b>${point}</b> 변조로 <b>${fmtMoney(loss,S.currency)} ${S.currency}</b> 미청구. 값싸게 충전 성립.`;
+      if(inj && point==="M2")$("narr").innerHTML=`③ 충전기→서버 통신선의 <b>😈 공격자 장치</b>가 보고값을 <b>${fmtE(trueE)}→${fmtE(reported)} kWh</b>로 가로채, <b>결제기(eMSP)</b>가 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(trueA,S.currency)}) 대비 <b>${fmtMoney(loss,S.currency)} ${S.currency}</b> 적게 냄.`;
+      else if(inj)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 실제 ${fmtE(trueE)} kWh(${fmtMoney(trueA,S.currency)} ${S.currency}) 충전했지만 <b>${point}</b> 변조로 <b>${fmtMoney(loss,S.currency)} ${S.currency}</b> 미청구. 값싸게 충전 성립.`;
       else if(blocked)$("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> — <b>M2</b> 변조 시도했으나 <b>OCPP TLS(보안프로파일 2/3)</b>로 전송이 암호화되어 중간자 변조 <b>차단</b>. 정상 청구.`;
       else $("narr").innerHTML=`③ <b>결제기</b> 청구서 <b>${fmtMoney(billA,S.currency)} ${S.currency}</b> 발행 — 변조 없음(정상). 실제 ${fmtE(trueE)} kWh 전량 청구.`;
       flowRAF=null; return;
@@ -1108,7 +1114,7 @@ function initLive(){
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=0.30; S.currency="USD";
     S.capacity=0.2; S.soc0=0; S.delivered=0; S.phase="idle"; S.simSec=0;
-    log("라이브 M2 공격 시작 — 실제 스택에서 OCPP meterValue를 가로채 변조합니다.","ok");
+    log("현장 M2 공격 — 운전자가 충전기 통신선에 장치를 물려 OCPP 보고값을 가로챕니다.","ok");
     renderAll();
     fetch('/api/live/start',{method:'POST'}).then(()=>{ poll=setInterval(tick,1000); });
   });
