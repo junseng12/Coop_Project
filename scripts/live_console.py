@@ -66,7 +66,7 @@ def live_attack():
         rd = run_dir()
         if not rd:
             emit("err", "diagnostics/live-m2-* 재현 폴더가 없습니다."); return
-        emit("warn", "※ 충전 시간은 실험을 위해 압축(실세션 ~50초). 화면 수치는 완충(≈48 kWh) 환산이며 변조 비율(10:1)은 실측값입니다.")
+        emit("warn", "※ 실제 전기차 완충 용량(≈48 kWh)을 가속해(빠르게) 보여줍니다(실세션 ~50초). 변조 비율(10:1)은 실측값입니다.")
         metrics(phase="setup")
         emit("step", "① 공격자가 충전기 통신선(OCPP 업링크)에 중간자 장치를 연결 (약 1분)")
         out = sh(["bash", str(rd / "mitm_up.sh")], timeout=180)
