@@ -157,7 +157,7 @@
   .scene{position:relative;min-width:660px;height:224px;margin:0 auto}
   .baseline{position:absolute;top:40px;left:12%;width:76%;height:3px;background:var(--line);border-radius:2px}
   .legtxt{position:absolute;top:20px;font-family:var(--mono);font-size:10.5px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
-  #legA{left:31%} #legB{left:69%}
+  #legA{left:28%} #legB{left:76%}
   .actor{position:absolute;top:56px;transform:translateX(-50%);width:146px;text-align:center;
     background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;transition:border-color .2s,box-shadow .2s}
   .actor .ico{font-size:30px;line-height:1}
@@ -175,7 +175,7 @@
     font-family:var(--mono);font-weight:700;font-size:11px;padding:4px 9px;border-radius:8px;white-space:nowrap;z-index:4;
     box-shadow:0 0 0 4px var(--bad-soft);animation:pop .3s ease-out}
   @keyframes pop{from{transform:translate(-50%,-50%) scale(.4);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
-  .attacker{position:absolute;top:-4px;left:62%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:1px;animation:pop .3s ease-out}
+  .attacker{position:absolute;top:-22px;left:60%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:1px;animation:pop .3s ease-out}
   .attacker .aico{font-size:20px;line-height:1}
   .attacker .atxt{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--bad);text-align:center;line-height:1.2;background:var(--bad-soft);border:1px solid var(--bad);border-radius:6px;padding:1px 5px}
   .mmarks{position:absolute;top:150px;left:0;right:0;height:64px}
@@ -299,6 +299,8 @@
   .dz-desc{font-size:13px;color:var(--ink);margin-top:14px;line-height:1.65}
   .dz-result{margin-top:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;line-height:1.6}
   .dz-verify{margin-top:12px;font-size:12px;color:var(--muted);border-left:3px solid var(--good);padding-left:10px}
+  .rd-flash{margin-top:9px;font-size:12px;line-height:1.5;color:var(--ink);background:var(--bad-soft);border-radius:8px;padding:8px 10px;min-height:1px}
+  .rd-flash:empty{display:none}
 
   /* live mode (only when served by scripts/live_console.py) */
   .live-only{display:none}
@@ -332,7 +334,6 @@
     </div>
     <span class="pill" id="ratePill">0.30 USD/kWh</span>
     <button class="tgl live-only" id="liveBtn" type="button" style="border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-weight:700">🔴 라이브 M2 공격 실행</button>
-    <a class="tgl sim-only" href="results.html">발표 결과 ↗</a>
     <button class="tgl" id="themeBtn" type="button">테마</button>
   </div>
 </header>
@@ -350,8 +351,8 @@
           <span class="t">carsim@everest — mosquitto_pub · OCPP201 · OCPI 2.2.1</span>
         </div>
         <div class="term-out" id="out" aria-live="polite"></div>
-        <div class="chips" id="chips"></div>
-        <form class="term-in" id="form">
+        <div class="chips sim-only" id="chips"></div>
+        <form class="term-in sim-only" id="form">
           <span class="pr">&gt;</span>
           <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="명령 입력 후 Enter · help 로 목록" aria-label="명령어 입력">
         </form>
@@ -376,8 +377,7 @@
             <div class="readouts">
               <div class="ro energy"><span class="l">전달 에너지</span><span class="v" id="roE">0.000 <small>kWh</small></span></div>
               <div class="ro"><span class="l">순시 전력</span><span class="v" id="roP">0.00 <small>kW</small></span></div>
-              <div class="ro"><span class="l">세션 시간</span><span class="v" id="roT">00:00:00</span></div>
-              <div class="ro"><span class="l">배터리 용량</span><span class="v" id="roC">60 <small>kWh</small></span></div>
+                    <div class="ro"><span class="l">배터리 용량</span><span class="v" id="roC">60 <small>kWh</small></span></div>
             </div>
           </div>
         </div>
@@ -533,6 +533,7 @@
           <div class="rd-arrow" id="rd-arrow">=</div>
           <div class="rd-cell"><span>보고(변조)</span><b id="rd-rep">0 kWh</b></div>
         </div>
+        <div class="rd-flash" id="rd-flash"></div>
       </div>
       <div class="rd-bill">
         <div class="rd-label">청구서</div>
@@ -716,7 +717,6 @@ function renderMetrics(){
   $("socArc").setAttribute("stroke", pct>=100?"var(--good)":"var(--energy)");
   $("roE").innerHTML=`${eNum(S.delivered)} <small>${eU()}</small>`;
   $("roP").innerHTML=`${(S.phase==="charging"?powerKw():0).toFixed(2)} <small>kW</small>`;
-  $("roT").textContent=hms(S.simSec);
   $("roC").innerHTML=`${S.capacity} <small>kWh</small>`;
   $("ratePill").textContent=`${S.rate.toFixed(2)} ${S.currency}/kWh`;
 }
@@ -879,6 +879,7 @@ function renderRail(){
   $("rd-rep").textContent = eNum(rep)+" "+eU();
   $("rd-rep").className = active?"bad":"good";
   $("rd-arrow").textContent = active?"→":"=";
+  {const fl=$("rd-flash"); if(fl) fl.innerHTML = active ? `⚡ <b>변조 중</b> — 충전기가 잰 <b>${eNum(trueE)} ${eU()}</b>를 장치가 가로채, 서버엔 <b style="color:var(--bad)">${eNum(rep)} ${eU()}</b>만 보고됨 (−90%)` : (blocked?`🔒 TLS로 차단 — 보고 = 실측`:"");}
   const amt=roundHalfUp(rep*S.rate,d), norm=roundHalfUp(trueE*S.rate,d);
   $("rd-amt").textContent = fmtMoney(amt,S.currency)+" "+S.currency;
   $("rd-amt").className = "rd-amt"+(active?" bad":"");
@@ -960,7 +961,7 @@ function playFlow(){
       $("narr").innerHTML=`② <b>충전기(EVSE)</b>가 전력을 공급하고 계량합니다 — ${fmtE(trueE)} kWh`;}
     if(inj!=null && !tampered && p>=injFrac){
       tampered=true; token.classList.add("manip"); token.innerHTML=`${fmtE(reported)} <small>kWh</small>`;
-      burst.hidden=false; burst.style.left=MX[inj]+"%"; burst.textContent=`⚡ ${point} 변조 ${fmtE(trueE)}→${fmtE(reported)} kWh`;
+      if(point!=="M2"){burst.hidden=false; burst.style.left=MX[inj]+"%"; burst.textContent=`⚡ ${point} 변조 ${fmtE(trueE)}→${fmtE(reported)} kWh`;}
       if(inj===1)$("aChg").classList.add("hot");
       $("narr").innerHTML=`⚠ <b>${point}</b> 지점에서 변조 발생 — 보고 에너지가 <b>${fmtE(trueE)} → ${fmtE(reported)} kWh</b>로 조작됩니다. 탐지 경계: ${BOUNDARY[inj-1]}`;
     }
