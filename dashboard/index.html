@@ -176,8 +176,10 @@
     box-shadow:0 0 0 4px var(--bad-soft);animation:pop .3s ease-out}
   @keyframes pop{from{transform:translate(-50%,-50%) scale(.4);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
   .attacker{position:absolute;top:-22px;left:60%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:1px;animation:pop .3s ease-out}
-  .attacker .aico{font-size:20px;line-height:1}
-  .attacker .atxt{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--bad);text-align:center;line-height:1.2;background:var(--bad-soft);border:1px solid var(--bad);border-radius:6px;padding:1px 5px}
+  .attacker{align-items:center}
+  .atk-box{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--bad);text-align:center;line-height:1.35;background:var(--bad-soft);border:1px solid var(--bad);border-radius:7px;padding:3px 8px;box-shadow:0 2px 8px rgba(196,54,47,.25)}
+  .atk-box .aico{font-size:17px}
+  .atk-tap{width:0;border-left:2px dashed var(--bad);height:46px}
   .mmarks{position:absolute;top:150px;left:0;right:0;height:64px}
   .mmark{position:absolute;transform:translateX(-50%);text-align:center;width:118px}
   .mmark .tick{width:2px;height:14px;background:var(--line);margin:0 auto 4px}
@@ -441,7 +443,7 @@
         <div class="token" id="token">0.0 <small>kWh</small></div>
         <div class="burst" id="burst" hidden></div>
         <div class="mmarks" id="mmarks"></div>
-        <div class="attacker" id="sceneAttacker" hidden><span class="aico">😈</span><span class="atxt">공격자 장치<br>OCPP 가로채기</span></div>
+        <div class="attacker" id="sceneAttacker" hidden><div class="atk-box"><span class="aico">😈💻</span><br>공격자 장치<br><b>OCPP 가로채기</b></div><div class="atk-tap"></div></div>
       </div>
     </div>
     <div class="scene-bar">
@@ -457,8 +459,8 @@
     <div id="invFull" hidden></div>
   </div>
 
-  <div class="eyebrow">실험 기록 — M1~M4 비교</div>
-  <div class="rec-card">
+  <div class="eyebrow sim-only">실험 기록 — M1~M4 비교</div>
+  <div class="rec-card sim-only">
     <div class="rec-scroll">
       <table class="rec">
         <thead><tr><th>#</th><th>지점</th><th>실제 kWh</th><th>보고 kWh</th><th>청구</th><th>결과</th><th>탐지 경계 / 비고</th></tr></thead>
@@ -468,8 +470,8 @@
     <button class="playbtn" id="recClear" type="button" style="margin-top:12px">기록 지우기</button>
   </div>
 
-  <div class="eyebrow">라이브 스택 실측 — 감사 증거 · M4(코드)+M2(네트워크) (시뮬레이션 아님)</div>
-  <div class="audit-card">
+  <div class="eyebrow sim-only">라이브 스택 실측 — 감사 증거 · M4(코드)+M2(네트워크) (시뮬레이션 아님)</div>
+  <div class="audit-card sim-only">
     <span class="audit-badge"><span class="b"></span>LIVE · 실행·기록됨 2026-11-19 · 재현 가능</span>
     <p class="audit-lead">아래 수치는 이 대시보드가 계산한 값이 <b>아니라</b>, 실행 중인 CitrineOS 스택의 <b>PostgreSQL·OCPI에서 실제로 조회</b>한 값입니다. M4 변조(코드 한 줄)를 실제로 가하고 EVerest 충전 세션을 돌린 뒤 수집했으며, 실험 후 원복했습니다. vendor 커밋 <span class="mono">4fd7599</span> 고정 유지, 보안옵션 미변경(PnC 체인 검증 ON).</p>
     <div class="audit-meta">거래 ID: cd4d321b-f16f-4b5e-a5b3-8e75d06fee93 · 증거 파일: diagnostics/live-m4-20261119T053908Z/ (vendor diff · delivery.json · 교차대조)</div>
@@ -510,7 +512,7 @@
     <p class="audit-note">→ <b>두 가지가 실제 스택에서 라이브로 입증</b>되었습니다: <b>M4</b>(백엔드 코드 변조, 운영자/공급망 위협)와 <b>M2</b>(네트워크 패킷 변조, 운전자+장치 위협). 둘 다 계량값이 서버·OCPI·청구서로 그대로 전파되어 청구가 1/10로 떨어졌습니다. 숫자는 임의값이 아니라 실제 DB·계량 telemetry 조회 결과입니다.</p>
   </div>
 
-  <div class="note">
+  <div class="note sim-only">
     <b>작동 순서(발표 권장).</b> <b>실험 제어</b> 패널에서 한 번에 한 지점만 고릅니다.
     ① <b>정상</b> → <code>start</code> → 완충 → 실제 전량 청구 확인(기준) ·
     ② <b>M1</b> 선택 → <code>reset</code> → <code>start</code> → 완충 시 자동 종료, 흐름도가 M1에서 변조를 표시하고 청구가 낮아짐. <b>실험 기록</b>에 한 줄 쌓임 ·
@@ -963,7 +965,6 @@ function renderScene(){
   if(LIVE){
     const d=CUR_DIGITS[S.currency], rep2=reportedEnergy(S.delivered);
     const bill=roundHalfUp(rep2*S.rate,d), norm=roundHalfUp(S.delivered*S.rate,d), ended=S.phase==="ended";
-    const tk=$("token"); if(tk) tk.style.display="none";
     $("carV").textContent=`목표 ${fmtE(LIVE_FULL)} kWh`;
     $("chgV").textContent=`계량 ${fmtE(S.delivered)} kWh`;
     $("payV").textContent= ended ? `${fmtMoney(bill,S.currency)} ${S.currency}` : "청구 대기";
@@ -1173,7 +1174,7 @@ function initLive(){
       seen=ev.length;
       updateLivePipe();
       renderAll();
-      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); interceptAnim(); }
+      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); playFlow(); interceptAnim(); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }
