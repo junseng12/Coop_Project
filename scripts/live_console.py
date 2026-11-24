@@ -81,7 +81,7 @@ def live_attack():
         metrics(phase="charging")
         emit("charge", "충전 중 — 충전기 실측(참) vs 서버가 받는 보고값(장치가 변조) 실시간 추적")
         last_rew = 0
-        for i in range(22):  # ~50s of charging
+        for i in range(9):  # ~50s of charging
             time.sleep(2.3)
             true = pm_true_kwh()
             rew = rewrites()

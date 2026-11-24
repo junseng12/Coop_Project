@@ -594,7 +594,7 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=42;
+let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=16;
 function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
@@ -1199,7 +1199,7 @@ let lastAnim=0;
 function interceptAnim(){
   const pk=$("lp-packet"); if(!pk) return;
   const Y=id=>{const el=$(id);return el?el.offsetTop:0;};
-  const t=LIVE?liveTarget:S.delivered, rv=reportedEnergy(t), bill=Math.round(rv*300).toLocaleString();
+  const t=S.delivered, rv=reportedEnergy(t), bill=Math.round(rv*300).toLocaleString();
   pk.hidden=false; pk.className="lp-packet t"; pk.textContent=fmtE(t)+" kWh"; pk.style.top=(Y("lps-meter")+8)+"px";
   setTimeout(()=>{ pk.style.top=(Y("lps-ocpp")+8)+"px"; },60);
   setTimeout(()=>{ pk.className="lp-packet grab"; pk.textContent="⚡ 가로채!"; },780);
