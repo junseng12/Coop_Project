@@ -596,7 +596,7 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=11;
+let liveRewrites=0, rampStart=0, rampRAF=null, liveStage=""; const RAMP_SEC=11;
 function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
@@ -967,12 +967,14 @@ function renderScene(){
     const bill=roundHalfUp(rep2*S.rate,d), norm=roundHalfUp(S.delivered*S.rate,d), ended=S.phase==="ended";
     $("carV").textContent=`목표 ${fmtE(LIVE_FULL)} kWh`;
     $("chgV").textContent=`계량 ${fmtE(S.delivered)} kWh`;
-    $("payV").textContent= ended ? `${fmtMoney(bill,S.currency)} ${S.currency}` : "청구 대기";
+    const done = ended && liveStage==="done";
+    $("payV").textContent= done ? `${fmtMoney(bill,S.currency)} ${S.currency}` : "청구 대기";
     const tk=$("token");
     if(tk && !ended){ tk.style.display=""; tk.style.transition="none"; tk.classList.remove("manip"); const fr=Math.min(1,S.delivered/LIVE_FULL); tk.style.left=(12+fr*38)+"%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`; }
-    if(flowRAF==null) $("narr").innerHTML = ended
-      ? `③ 충전 완료 후 전송된 보고값을 충전기→서버 통신선의 <b>😈 공격자 장치</b>가 <b>${fmtE(S.delivered)}→${fmtE(rep2)} kWh</b>로 가로채, 결제기(eMSP)가 <b>${fmtMoney(bill,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(norm,S.currency)}) 대비 <b>${fmtMoney(norm-bill,S.currency)} ${S.currency}</b> 적게 냄.`
-      : `① 자동차 충전 중 — 충전기가 <b>${fmtE(S.delivered)} kWh</b> 계량 (완충 후 서버로 전송)`;
+    if(flowRAF==null) $("narr").innerHTML =
+        !ended ? `① 자동차 충전 중 — 충전기가 <b>${fmtE(S.delivered)} kWh</b> 계량 (완충 후 서버로 전송)`
+      : !done ? `② 완충 완료 — 충전기가 측정한 <b>${fmtE(S.delivered)} kWh</b> 보고값이 이제 서버로 전송됩니다. <span style="color:var(--muted)">(전송 전 · 아직 변조 없음)</span>`
+      : `③ 전송 중 충전기→서버 통신선의 <b>😈 공격자 장치</b>가 보고값을 <b>${fmtE(S.delivered)}→${fmtE(rep2)} kWh</b>로 가로채, 결제기(eMSP)가 <b>${fmtMoney(bill,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(norm,S.currency)}) 대비 <b>${fmtMoney(norm-bill,S.currency)} ${S.currency}</b> 적게 냄.`;
   }
 }
 function playFlow(){
@@ -1158,7 +1160,7 @@ function initLive(){
     seen=0; played=false; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
-    S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.phase="idle"; S.simSec=0;
+    S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; liveStage=""; S.phase="idle"; S.simSec=0;
     log("현장 M2 공격 — 운전자가 충전기 통신선에 장치를 물려 OCPP 보고값을 가로챕니다.","ok");
     log("※ 실제 승용 EV 완충(배터리 77 kWh·약 70 kWh 충전·급속 약 2만원) 기준, 충전 가속 재생 · 변조 비율(10:1)은 실측값.","dim");
     renderAll();
@@ -1176,7 +1178,7 @@ function initLive(){
       seen=ev.length;
       updateLivePipe();
       renderAll();
-      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); liveTransmitAnim(); interceptAnim(); }
+      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; liveStage="hold"; renderAll(); setTimeout(()=>{ liveStage="done"; liveTransmitAnim(); interceptAnim(); renderScene(); }, 5000); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }
