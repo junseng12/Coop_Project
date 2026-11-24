@@ -315,7 +315,7 @@
   .lp-a{text-align:center;color:var(--muted);font-size:10.5px;font-family:var(--mono);margin:4px 0}
   .lp-log{margin-top:10px;background:var(--term-bg);color:var(--term-ink);border-radius:8px;padding:9px;font-family:var(--mono);font-size:10.5px;line-height:1.5;max-height:150px;overflow-y:auto}
   #livePipe{position:relative}
-  .lp-packet{position:absolute;right:12px;transition:top .65s cubic-bezier(.4,0,.2,1);z-index:8;font-family:var(--mono);font-weight:700;font-size:12px;padding:3px 9px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.3);white-space:nowrap;color:#fff}
+  .lp-packet{position:absolute;right:12px;transition:top .4s cubic-bezier(.4,0,.2,1);z-index:8;font-family:var(--mono);font-weight:700;font-size:12px;padding:3px 9px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.3);white-space:nowrap;color:#fff}
   .lp-packet.t{background:var(--true)} .lp-packet.grab{background:var(--bad);animation:pop .3s ease-out} .lp-packet.b{background:var(--bad)} .lp-packet.acc{background:var(--accent)}
   .lp-log>div{margin:1px 0} .lp-log .ts{color:var(--term-dim)} .lp-log .ok{color:#5fd39a} .lp-log .evt{color:#8fb4ff} .lp-log .result{color:#ffd166;font-weight:700} .lp-log .warn{color:#e7b84f} .lp-log .err{color:#ff8178}
 
@@ -596,7 +596,7 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=12;
+let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=10;
 function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
@@ -1203,23 +1203,23 @@ function liveTransmitAnim(){
   const tk=$("token"); if(!tk) return;
   const rv=reportedEnergy(S.delivered);
   tk.style.display=""; tk.classList.remove("manip");
-  tk.style.transition="left 1s cubic-bezier(.4,0,.2,1)";
+  tk.style.transition="left .4s cubic-bezier(.4,0,.2,1)";
   tk.style.left="50%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`;     // 충전기에서 출발
-  setTimeout(()=>{ tk.style.left="62%"; },200);                                    // OCPP 쪽으로 이동
-  setTimeout(()=>{ tk.classList.add("manip"); tk.innerHTML=`⚡ ${fmtE(rv)} <small>kWh</small>`; },1200);  // 가로채기! 값 변조
-  setTimeout(()=>{ tk.style.left="88%"; },1500);                                   // 결제기로 (변조된 값)
+  setTimeout(()=>{ tk.style.left="62%"; },70);                                     // OCPP 쪽으로 이동
+  setTimeout(()=>{ tk.classList.add("manip"); tk.innerHTML=`⚡ ${fmtE(rv)} <small>kWh</small>`; },480);  // 가로채기! 값 변조
+  setTimeout(()=>{ tk.style.left="88%"; },620);                                    // 결제기로 (변조된 값)
 }
 function interceptAnim(){
   const pk=$("lp-packet"); if(!pk) return;
   const Y=id=>{const el=$(id);return el?el.offsetTop:0;};
   const t=S.delivered, rv=reportedEnergy(t), bill=Math.round(rv*300).toLocaleString();
   pk.hidden=false; pk.className="lp-packet t"; pk.textContent=fmtE(t)+" kWh"; pk.style.top=(Y("lps-meter")+8)+"px";
-  setTimeout(()=>{ pk.style.top=(Y("lps-ocpp")+8)+"px"; },60);
-  setTimeout(()=>{ pk.className="lp-packet grab"; pk.textContent="⚡ 가로채!"; },780);
-  setTimeout(()=>{ pk.className="lp-packet b"; pk.textContent=fmtE(rv)+" kWh"; },1150);
-  setTimeout(()=>{ pk.style.top=(Y("lps-db")+8)+"px"; },1300);
-  setTimeout(()=>{ pk.className="lp-packet acc"; pk.textContent=bill+"원"; pk.style.top=(Y("lps-bill")+8)+"px"; },2050);
-  setTimeout(()=>{ pk.hidden=true; },2950);
+  setTimeout(()=>{ pk.style.top=(Y("lps-ocpp")+8)+"px"; },50);
+  setTimeout(()=>{ pk.className="lp-packet grab"; pk.textContent="⚡ 가로채!"; },470);
+  setTimeout(()=>{ pk.className="lp-packet b"; pk.textContent=fmtE(rv)+" kWh"; },620);
+  setTimeout(()=>{ pk.style.top=(Y("lps-db")+8)+"px"; },760);
+  setTimeout(()=>{ pk.className="lp-packet acc"; pk.textContent=bill+"원"; pk.style.top=(Y("lps-bill")+8)+"px"; },1180);
+  setTimeout(()=>{ pk.hidden=true; },2000);
 }
 function lpLog(e){ const el=$("lp-log"); if(!el) return; const t=new Date().toLocaleTimeString("en-GB"); const d=document.createElement("div"); d.className=e.kind||"evt"; d.innerHTML=`<span class="ts">[${t}]</span> ${esc(e.text)}`; el.appendChild(d); el.scrollTop=el.scrollHeight; }
 function syncTermHeight(){ try{ const t=document.querySelector(".term"), e=document.querySelector(".tele"); if(t&&e){ const h=e.offsetHeight; if(h>140) t.style.height=h+"px"; } }catch(x){} }
