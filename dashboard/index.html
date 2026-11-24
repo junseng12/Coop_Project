@@ -596,7 +596,7 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=16;
+let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=12;
 function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
@@ -968,6 +968,8 @@ function renderScene(){
     $("carV").textContent=`목표 ${fmtE(LIVE_FULL)} kWh`;
     $("chgV").textContent=`계량 ${fmtE(S.delivered)} kWh`;
     $("payV").textContent= ended ? `${fmtMoney(bill,S.currency)} ${S.currency}` : "청구 대기";
+    const tk=$("token");
+    if(tk && !ended){ tk.style.display=""; tk.style.transition="none"; tk.classList.remove("manip"); const fr=Math.min(1,S.delivered/LIVE_FULL); tk.style.left=(12+fr*38)+"%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`; }
     if(flowRAF==null) $("narr").innerHTML = ended
       ? `③ 충전 완료 후 전송된 보고값을 충전기→서버 통신선의 <b>😈 공격자 장치</b>가 <b>${fmtE(S.delivered)}→${fmtE(rep2)} kWh</b>로 가로채, 결제기(eMSP)가 <b>${fmtMoney(bill,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(norm,S.currency)}) 대비 <b>${fmtMoney(norm-bill,S.currency)} ${S.currency}</b> 적게 냄.`
       : `① 자동차 충전 중 — 충전기가 <b>${fmtE(S.delivered)} kWh</b> 계량 (완충 후 서버로 전송)`;
@@ -1174,7 +1176,7 @@ function initLive(){
       seen=ev.length;
       updateLivePipe();
       renderAll();
-      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); playFlow(); interceptAnim(); }
+      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); liveTransmitAnim(); interceptAnim(); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }
@@ -1197,6 +1199,16 @@ function updateLivePipe(){
   }
 }
 let lastAnim=0;
+function liveTransmitAnim(){
+  const tk=$("token"); if(!tk) return;
+  const rv=reportedEnergy(S.delivered);
+  tk.style.display=""; tk.classList.remove("manip");
+  tk.style.transition="left 1s cubic-bezier(.4,0,.2,1)";
+  tk.style.left="50%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`;     // 충전기에서 출발
+  setTimeout(()=>{ tk.style.left="62%"; },200);                                    // OCPP 쪽으로 이동
+  setTimeout(()=>{ tk.classList.add("manip"); tk.innerHTML=`⚡ ${fmtE(rv)} <small>kWh</small>`; },1200);  // 가로채기! 값 변조
+  setTimeout(()=>{ tk.style.left="88%"; },1500);                                   // 결제기로 (변조된 값)
+}
 function interceptAnim(){
   const pk=$("lp-packet"); if(!pk) return;
   const Y=id=>{const el=$(id);return el?el.offsetTop:0;};
