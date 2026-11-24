@@ -596,8 +596,9 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null, liveStage=""; const RAMP_SEC=11;
-function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
+let liveRewrites=0, rampStart=0, rampRAF=null, liveStage="", livePlayed=false; const RAMP_SEC=8;
+function rampLoop(){ const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); if(S.delivered>=LIVE_FULL){ rampRAF=null; liveFinish(); return; } rampRAF=requestAnimationFrame(rampLoop); }
+function liveFinish(){ if(livePlayed) return; livePlayed=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; liveStage="hold"; renderAll(); setTimeout(()=>{ liveStage="done"; liveTransmitAnim(); interceptAnim(); renderScene(); }, 5000); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
 let S={};
@@ -1151,13 +1152,13 @@ $("demoBtn").addEventListener("click",()=>{ demoRunning ? (demoCancel=true) : de
   }catch(e){}
 })();
 function initLive(){
-  const btn=$("liveBtn"); let poll=null, seen=0, played=false;
+  const btn=$("liveBtn"); let poll=null, seen=0;
   const KMAP={step:"evt",ok:"ok",err:"err",evt:"evt",result:"ok",charge:"dim",warn:"warn"};
   const PMAP={setup:"slac",charging:"charging",ended:"ended"};
   btn.addEventListener("click",()=>{
     if(btn.disabled)return;
     btn.disabled=true; btn.textContent="🔴 공격 진행 중...";
-    seen=0; played=false; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
+    seen=0; livePlayed=false; liveStage=""; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
     S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; liveStage=""; S.phase="idle"; S.simSec=0;
@@ -1172,13 +1173,13 @@ function initLive(){
       const m=s.metrics||{};
       liveRewrites=m.rewrites||0;
       if(m.phase && PMAP[m.phase]) S.phase=PMAP[m.phase];
-      if(S.phase==="charging" && !rampRAF && !played){ if(!rampStart) rampStart=Date.now(); rampLoop(); }
+      if(S.phase==="charging" && !rampRAF && !livePlayed){ if(!rampStart) rampStart=Date.now(); rampLoop(); }
       const ev=s.events||[];
       for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); lpLog(e); }
       seen=ev.length;
       updateLivePipe();
       renderAll();
-      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; liveStage="hold"; renderAll(); setTimeout(()=>{ liveStage="done"; liveTransmitAnim(); interceptAnim(); renderScene(); }, 5000); }
+      if(S.phase==="ended" && !livePlayed){ liveFinish(); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }

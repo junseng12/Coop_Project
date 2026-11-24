@@ -85,7 +85,7 @@ def live_attack():
         # was delaying phase="ended" and freezing the token at full charge).
         # Heavy true/stored/ratio measurement happens once after stop, below.
         last_rew = 0
-        for i in range(5):  # ~11s wall clock, matches the dashboard charge ramp
+        for i in range(6):  # ~11s wall clock, matches the dashboard charge ramp
             time.sleep(1.8)
             rew = rewrites()
             metrics(rewrites=rew)
