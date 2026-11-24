@@ -594,8 +594,8 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveTarget=0, liveRAF=null, liveRewrites=0;
-function liveEase(){ const d=liveTarget-S.delivered; if(Math.abs(d)>0.004){ S.delivered+=d*0.12; renderMetrics(); updateLivePipe(); liveRAF=requestAnimationFrame(liveEase); } else { S.delivered=liveTarget; renderMetrics(); updateLivePipe(); liveRAF=null; } }
+let liveRewrites=0, rampStart=0, rampRAF=null; const RAMP_SEC=42;
+function rampLoop(){ if(S.phase!=="charging"){ rampRAF=null; return; } const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); rampRAF=requestAnimationFrame(rampLoop); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
 let S={};
@@ -1155,24 +1155,25 @@ function initLive(){
     seen=0; played=false; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
-    S.capacity=77; S.soc0=10; S.delivered=0; liveTarget=0; liveRewrites=0; S.phase="idle"; S.simSec=0;
+    S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.phase="idle"; S.simSec=0;
     log("현장 M2 공격 — 운전자가 충전기 통신선에 장치를 물려 OCPP 보고값을 가로챕니다.","ok");
     log("※ 실제 승용 EV 완충(배터리 77 kWh·약 70 kWh 충전·급속 약 2만원) 기준, 충전 가속 재생 · 변조 비율(10:1)은 실측값.","dim");
     renderAll();
     fetch('/api/live/start',{method:'POST'}).then(()=>{ setTimeout(syncTermHeight,100); poll=setInterval(tick,1000); });
   });
+  S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW"; S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; S.phase="idle"; renderAll();
   function tick(){
     fetch('/api/live/state',{cache:'no-store'}).then(r=>r.json()).then(s=>{
       const m=s.metrics||{};
-      if(typeof m.true_kwh==="number"){ liveTarget=Math.min(LIVE_FULL, Math.max(liveTarget, m.true_kwh*LIVE_SCALE)); if(!liveRAF) liveEase(); }
       liveRewrites=m.rewrites||0;
       if(m.phase && PMAP[m.phase]) S.phase=PMAP[m.phase];
+      if(S.phase==="charging" && !rampRAF && !played){ if(!rampStart) rampStart=Date.now(); rampLoop(); }
       const ev=s.events||[];
       for(let i=seen;i<ev.length;i++){ const e=ev[i]; log(e.text, KMAP[e.kind]||"info"); lpLog(e); }
       seen=ev.length;
       updateLivePipe();
       renderAll();
-      if(S.phase==="ended" && !played){ played=true; S.delivered=liveTarget; renderAll(); interceptAnim(); }
+      if(S.phase==="ended" && !played){ played=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; renderAll(); interceptAnim(); }
       if(s.done){ clearInterval(poll); poll=null; btn.disabled=false; btn.textContent="🔴 라이브 M2 공격 다시 실행"; }
     }).catch(()=>{});
   }
