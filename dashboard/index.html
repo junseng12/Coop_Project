@@ -596,9 +596,9 @@ const LIVE_SCALE=480, LIVE_FULL=72;   // climb smoothly to ~69 kWh over the sess
 function eU(){ return "kWh"; }
 function eNum(kwh){ return fmtE(kwh); }
 function rateStr(){ return S.currency==="KRW" ? String(Math.round(S.rate)) : S.rate.toFixed(2); }
-let liveRewrites=0, rampStart=0, rampRAF=null, liveStage="", livePlayed=false; const RAMP_SEC=8;
+let liveRewrites=0, rampStart=0, rampRAF=null, liveStage="", livePlayed=false; const RAMP_SEC=5;
 function rampLoop(){ const el=(Date.now()-rampStart)/1000; S.delivered=Math.min(LIVE_FULL, el/RAMP_SEC*LIVE_FULL); renderMetrics(); updateLivePipe(); renderScene(); if(S.delivered>=LIVE_FULL){ rampRAF=null; liveFinish(); return; } rampRAF=requestAnimationFrame(rampLoop); }
-function liveFinish(){ if(livePlayed) return; livePlayed=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; liveStage="hold"; renderAll(); setTimeout(()=>{ liveStage="done"; liveTransmitAnim(); interceptAnim(); renderScene(); }, 5000); }
+function liveFinish(){ if(livePlayed) return; livePlayed=true; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; S.delivered=LIVE_FULL; liveStage="hold"; renderAll(); setTimeout(liveTransmitAnim, 5000); }
 const METER_LOG_EVERY=1800; // sim seconds between meterValue logs
 
 let S={};
@@ -775,7 +775,8 @@ function renderPipeline(){
 }
 function renderInvoice(){
   const full=$("invFull"),empty=$("invEmpty");
-  if(S.phase!=="ended"){empty.hidden=false;full.hidden=true;return;}
+  const showInv = (typeof LIVE!=="undefined" && LIVE) ? (liveStage==="done") : (S.phase==="ended");
+  if(!showInv){empty.hidden=false;full.hidden=true;return;}
   empty.hidden=true;full.hidden=false;
   const d=CUR_DIGITS[S.currency];
   const rep=reportedEnergy(S.delivered);
@@ -968,14 +969,15 @@ function renderScene(){
     const bill=roundHalfUp(rep2*S.rate,d), norm=roundHalfUp(S.delivered*S.rate,d), ended=S.phase==="ended";
     $("carV").textContent=`목표 ${fmtE(LIVE_FULL)} kWh`;
     $("chgV").textContent=`계량 ${fmtE(S.delivered)} kWh`;
-    const done = ended && liveStage==="done";
+    const done = liveStage==="done";
     $("payV").textContent= done ? `${fmtMoney(bill,S.currency)} ${S.currency}` : "청구 대기";
     const tk=$("token");
-    if(tk && !ended){ tk.style.display=""; tk.style.transition="none"; tk.classList.remove("manip"); const fr=Math.min(1,S.delivered/LIVE_FULL); tk.style.left=(12+fr*38)+"%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`; }
+    if(tk && liveStage===""){ tk.style.display=""; tk.style.transition="none"; tk.classList.remove("manip"); const fr=Math.min(1,S.delivered/LIVE_FULL); tk.style.left=(12+fr*38)+"%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`; }
     if(flowRAF==null) $("narr").innerHTML =
-        !ended ? `① 자동차 충전 중 — 충전기가 <b>${fmtE(S.delivered)} kWh</b> 계량 (완충 후 서버로 전송)`
-      : !done ? `② 완충 완료 — 충전기가 측정한 <b>${fmtE(S.delivered)} kWh</b> 보고값이 이제 서버로 전송됩니다. <span style="color:var(--muted)">(전송 전 · 아직 변조 없음)</span>`
-      : `③ 전송 중 충전기→서버 통신선의 <b>😈 공격자 장치</b>가 보고값을 <b>${fmtE(S.delivered)}→${fmtE(rep2)} kWh</b>로 가로채, 결제기(eMSP)가 <b>${fmtMoney(bill,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(norm,S.currency)}) 대비 <b>${fmtMoney(norm-bill,S.currency)} ${S.currency}</b> 적게 냄.`;
+        liveStage==="" ? `① 자동차 충전 중 — 충전기가 <b>${fmtE(S.delivered)} kWh</b> 계량 (완충 후 서버로 전송)`
+      : liveStage==="hold" ? `② 완충 완료 — 충전기가 측정한 <b>${fmtE(S.delivered)} kWh</b> 보고값이 이제 서버로 전송됩니다. <span style="color:var(--muted)">(전송 전 · 아직 변조 없음)</span>`
+      : liveStage==="transit" ? `③ 전송 중 — 충전기→서버 통신선의 <b>😈 공격자 장치(M2)</b>가 보고값을 <b>${fmtE(S.delivered)}→${fmtE(rep2)} kWh</b>로 <b>가로채는 중…</b>`
+      : `④ 결제기 청구서 발행 — eMSP가 <b>${fmtE(rep2)} kWh</b> 기준 <b>${fmtMoney(bill,S.currency)} ${S.currency}</b>만 자동결제 — 실제(${fmtMoney(norm,S.currency)}) 대비 <b>${fmtMoney(norm-bill,S.currency)} ${S.currency}</b> 적게 냄.`;
   }
 }
 function playFlow(){
@@ -1161,7 +1163,7 @@ function initLive(){
     seen=0; livePlayed=false; liveStage=""; $("out").innerHTML=""; if($("lp-log"))$("lp-log").innerHTML=""; records=[];
     // live mode: the real attack drives the on-screen state (M2 network MITM, x0.1)
     S.inject={point:"M2",pct:10}; S.tls=false; S.rate=300; S.currency="KRW";
-    S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; liveStage=""; S.phase="idle"; S.simSec=0;
+    S.capacity=LIVE_FULL; S.soc0=0; S.delivered=0; liveRewrites=0; rampStart=0; if(rampRAF)cancelAnimationFrame(rampRAF); rampRAF=null; liveStage=""; S.sessionId="LIVE-"+Date.now().toString(36).toUpperCase(); S.phase="idle"; S.simSec=0;
     log("현장 M2 공격 — 운전자가 충전기 통신선에 장치를 물려 OCPP 보고값을 가로챕니다.","ok");
     log("※ 실제 승용 EV 완충(배터리 77 kWh·약 70 kWh 충전·급속 약 2만원) 기준, 충전 가속 재생 · 변조 비율(10:1)은 실측값.","dim");
     renderAll();
@@ -1203,26 +1205,34 @@ function updateLivePipe(){
 }
 let lastAnim=0;
 function liveTransmitAnim(){
-  const tk=$("token"); if(!tk) return;
-  const rv=reportedEnergy(S.delivered);
-  tk.style.display=""; tk.classList.remove("manip");
-  tk.style.transition="left .22s cubic-bezier(.4,0,.2,1)";
-  tk.style.left="50%"; tk.innerHTML=`${fmtE(S.delivered)} <small>kWh</small>`;     // 충전기에서 출발
-  setTimeout(()=>{ tk.style.left="62%"; },40);                                     // OCPP 쪽으로 이동
-  setTimeout(()=>{ tk.classList.add("manip"); tk.innerHTML=`⚡ ${fmtE(rv)} <small>kWh</small>`; },250);  // 가로채기! 값 변조
-  setTimeout(()=>{ tk.style.left="88%"; },340);                                    // 결제기로 (변조된 값)
+  const full=S.delivered, rv=reportedEnergy(full);
+  const x0=50, xM=62, x1=88, dur=RAMP_SEC*1000;   // 자동차→충전기와 동일 속도(동일 거리 38%)
+  liveStage="transit"; renderScene(); interceptAnim(dur);
+  const tk=$("token"); if(!tk){ setTimeout(()=>{ liveStage="done"; renderAll(); }, dur); return; }
+  tk.style.transition="none"; tk.style.display=""; tk.classList.remove("manip");
+  tk.style.left=x0+"%"; tk.innerHTML=`${fmtE(full)} <small>kWh</small>`;
+  const t0=performance.now(); let hit=false;
+  requestAnimationFrame(function step(now){
+    const p=Math.min(1,(now-t0)/dur), x=x0+p*(x1-x0);
+    if(!hit && x>=xM){ hit=true; tk.classList.add("manip"); tk.innerHTML=`⚡ ${fmtE(rv)} <small>kWh</small>`; }  // M2에서 가로채 변조
+    tk.style.left=x+"%";
+    if(p<1){ requestAnimationFrame(step); }
+    else { liveStage="done"; renderAll(); }   // 결제기 도착 → 하단 청구서 발행
+  });
 }
-function interceptAnim(){
+function interceptAnim(dur){
   const pk=$("lp-packet"); if(!pk) return;
   const Y=id=>{const el=$(id);return el?el.offsetTop:0;};
+  dur=dur||RAMP_SEC*1000;
   const t=S.delivered, rv=reportedEnergy(t), bill=Math.round(rv*300).toLocaleString();
+  pk.style.transition=`top ${Math.round(dur*0.3)}ms linear`;
   pk.hidden=false; pk.className="lp-packet t"; pk.textContent=fmtE(t)+" kWh"; pk.style.top=(Y("lps-meter")+8)+"px";
-  setTimeout(()=>{ pk.style.top=(Y("lps-ocpp")+8)+"px"; },30);
-  setTimeout(()=>{ pk.className="lp-packet grab"; pk.textContent="⚡ 가로채!"; },240);
-  setTimeout(()=>{ pk.className="lp-packet b"; pk.textContent=fmtE(rv)+" kWh"; },320);
-  setTimeout(()=>{ pk.style.top=(Y("lps-db")+8)+"px"; },400);
-  setTimeout(()=>{ pk.className="lp-packet acc"; pk.textContent=bill+"원"; pk.style.top=(Y("lps-bill")+8)+"px"; },640);
-  setTimeout(()=>{ pk.hidden=true; },1400);
+  setTimeout(()=>{ pk.style.top=(Y("lps-ocpp")+8)+"px"; },20);
+  setTimeout(()=>{ pk.className="lp-packet grab"; pk.textContent="⚡ 가로채!"; },Math.round(dur*0.32));
+  setTimeout(()=>{ pk.className="lp-packet b"; pk.textContent=fmtE(rv)+" kWh"; },Math.round(dur*0.40));
+  setTimeout(()=>{ pk.style.top=(Y("lps-db")+8)+"px"; },Math.round(dur*0.55));
+  setTimeout(()=>{ pk.className="lp-packet acc"; pk.textContent=bill+"원"; pk.style.top=(Y("lps-bill")+8)+"px"; },dur);
+  setTimeout(()=>{ pk.hidden=true; },dur+1200);
 }
 function lpLog(e){ const el=$("lp-log"); if(!el) return; const t=new Date().toLocaleTimeString("en-GB"); const d=document.createElement("div"); d.className=e.kind||"evt"; d.innerHTML=`<span class="ts">[${t}]</span> ${esc(e.text)}`; el.appendChild(d); el.scrollTop=el.scrollHeight; }
 function syncTermHeight(){ try{ const t=document.querySelector(".term"), e=document.querySelector(".tele"); if(t&&e){ const h=e.offsetHeight; if(h>140) t.style.height=h+"px"; } }catch(x){} }
