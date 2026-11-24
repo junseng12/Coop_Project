@@ -1133,7 +1133,7 @@ $("demoBtn").addEventListener("click",()=>{ demoRunning ? (demoCancel=true) : de
 // theme
 (function(){const btn=$("themeBtn");let t=null;try{t=localStorage.getItem("mterm-theme");}catch(e){}
   if(t)document.documentElement.setAttribute("data-theme",t);
-  btn.addEventListener("click",()=>{const cur=document.documentElement.getAttribute("data-theme");
+  if(btn) btn.addEventListener("click",()=>{const cur=document.documentElement.getAttribute("data-theme");
     const pd=window.matchMedia("(prefers-color-scheme:dark)").matches;
     const next=cur?(cur==="dark"?"light":"dark"):(pd?"light":"dark");
     document.documentElement.setAttribute("data-theme",next);try{localStorage.setItem("mterm-theme",next);}catch(e){}});})();
