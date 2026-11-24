@@ -80,18 +80,15 @@ def live_attack():
                  "sleep 1;iso_wait_slac_matched;iso_start_v2g_session ac,-1,-1;iso_wait_pwr_ready;iso_draw_power_regulated 16,3;sleep 120")
         metrics(phase="charging")
         emit("charge", "충전 중 — 충전기 실측(참) vs 서버가 받는 보고값(장치가 변조) 실시간 추적")
+        # Keep this loop light: the dashboard drives the charge bar on a time
+        # ramp, so we don't block it with slow per-iteration telemetry (that
+        # was delaying phase="ended" and freezing the token at full charge).
+        # Heavy true/stored/ratio measurement happens once after stop, below.
         last_rew = 0
-        for i in range(5):  # ~50s of charging
-            time.sleep(2.3)
-            true = pm_true_kwh()
+        for i in range(5):  # ~11s wall clock, matches the dashboard charge ramp
+            time.sleep(1.8)
             rew = rewrites()
-            tid, stored = db_latest(since)
-            m = {}
-            if true is not None: m["true_kwh"] = round(true, 4)
-            if stored is not None: m["stored_kwh"] = round(stored, 4)
-            m["rewrites"] = rew
-            if true and stored and stored > 0: m["ratio"] = round(true / stored, 1)
-            metrics(**m)
+            metrics(rewrites=rew)
             if rew > last_rew:
                 emit("evt", f"⚡ 장치가 OCPP 보고값 가로채 변조 #{rew}: meterValue ×0.1")
                 last_rew = rew
